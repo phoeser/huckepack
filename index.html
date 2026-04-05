@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#166534">
+<title>Huckepack</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+  :root {
+    --green-50: #f0fdf4; --green-100: #dcfce7; --green-200: #bbf7d0;
+    --green-500: #22c55e; --green-600: #16a34a; --green-700: #15803d;
+    --green-800: #166534; --green-900: #14532d;
+    --teal-500: #14b8a6; --teal-600: #0d9488;
+    --forest: #1a5c35;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--green-50);
+    color: #0f172a;
+    overflow: hidden;
+    height: 100dvh;
+    width: 100vw;
+    position: fixed;
+  }
+
+  /* ===== SCREENS ===== */
+  .screen { display: none; position: absolute; inset: 0; flex-direction: column; }
+  .screen.active { display: flex; }
+
+  /* ===== SPLASH ===== */
+  #splash {
+    background: linear-gradient(160deg, #166534, #14532d, #0f3d21);
+    justify-content: center; align-items: center; text-align: center; padding: 40px;
+  }
+  .splash-logo { font-size: 64px; margin-bottom: 16px; }
+  .splash-title { font-size: 42px; font-weight: 800; color: #fff; letter-spacing: -1px; }
+  .splash-sub { font-size: 16px; color: rgba(255,255,255,0.7); margin: 8px 0 32px; }
+  .splash-badge { padding: 8px 16px; background: rgba(74,222,128,0.15); border: 1px solid rgba(74,222,128,0.3); border-radius: 20px; color: #86efac; font-size: 13px; margin-bottom: 48px; }
+  .btn-primary {
+    width: 100%; max-width: 320px; padding: 16px; border-radius: 16px; border: none;
+    font-size: 17px; font-weight: 600; font-family: inherit; cursor: pointer;
+    background: #fff; color: var(--green-800); margin-bottom: 12px;
+  }
+  .btn-secondary {
+    width: 100%; max-width: 320px; padding: 16px; border-radius: 16px;
+    font-size: 17px; font-weight: 600; font-family: inherit; cursor: pointer;
+    background: rgba(255,255,255,0.1); color: #fff; border: 1.5px solid rgba(255,255,255,0.25);
+  }
+
+  /* ===== HOME ===== */
+  #home { background: var(--green-50); }
+  .home-header { padding: 56px 20px 0; display: flex; justify-content: space-between; align-items: center; }
+  .greeting { font-size: 22px; font-weight: 700; }
+  .greeting span { color: var(--green-700); }
+  .avatar {
+    width: 42px; height: 42px; background: linear-gradient(135deg, var(--green-600), var(--forest));
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 700; font-size: 17px;
+  }
+
+  .search-bar {
+    margin: 16px 20px 0; background: #fff; border-radius: 14px; padding: 14px 18px;
+    box-shadow: 0 2px 10px rgba(22,101,52,0.08); display: flex; align-items: center; gap: 12px;
+  }
+  .search-bar input {
+    flex: 1; border: none; outline: none; font-size: 15px; font-family: inherit; background: none; color: #0f172a;
+  }
+  .search-bar input::placeholder { color: #94a3b8; }
+  .search-go {
+    width: 38px; height: 38px; border-radius: 12px; border: none;
+    background: var(--green-600); color: #fff; font-size: 18px; cursor: pointer;
+  }
+
+  .mode-cards { display: flex; gap: 12px; padding: 20px 20px 0; }
+  .mode-card {
+    flex: 1; background: #fff; border-radius: 18px; padding: 18px 14px; text-align: center;
+    box-shadow: 0 2px 10px rgba(22,101,52,0.06); border: 2px solid transparent;
+  }
+  .mode-card.active { border-color: var(--green-500); background: var(--green-50); }
+  .mode-card .icon { font-size: 32px; margin-bottom: 8px; }
+  .mode-card .label { font-size: 15px; font-weight: 600; }
+  .mode-card .desc { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+
+  .eco-banner {
+    margin: 16px 20px 0; padding: 14px 18px; background: linear-gradient(135deg, var(--green-700), var(--forest));
+    border-radius: 16px; color: #fff; display: flex; align-items: center; gap: 12px;
+  }
+  .eco-banner .icon { font-size: 32px; }
+  .eco-banner h4 { font-size: 14px; font-weight: 600; }
+  .eco-banner p { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+
+  .stats-row { display: flex; gap: 10px; padding: 16px 20px 0; }
+  .stat-card { flex: 1; background: #fff; border-radius: 14px; padding: 12px 8px; text-align: center; box-shadow: 0 1px 6px rgba(0,0,0,0.04); }
+  .stat-card .val { font-size: 20px; font-weight: 700; color: var(--green-800); }
+  .stat-card .lbl { font-size: 10px; color: #94a3b8; margin-top: 2px; }
+
+  /* ===== BOTTOM NAV ===== */
+  .bottom-nav {
+    margin-top: auto; height: calc(70px + var(--safe-bottom)); padding-bottom: var(--safe-bottom);
+    background: #fff; border-top: 1px solid #f1f5f9;
+    display: flex; align-items: flex-start; padding-top: 8px; justify-content: space-around;
+  }
+  .nav-btn { display: flex; flex-direction: column; align-items: center; gap: 2px; background: none; border: none; font-family: inherit; cursor: pointer; padding: 4px 16px; }
+  .nav-btn .icon { font-size: 22px; }
+  .nav-btn .lbl { font-size: 10px; color: #94a3b8; font-weight: 500; }
+  .nav-btn.active .lbl { color: var(--green-600); font-weight: 600; }
+
+  /* ===== MAP SCREEN ===== */
+  #map-screen { background: #fff; }
+  .map-header {
+    position: absolute; top: 0; left: 0; right: 0; z-index: 1000;
+    padding: 50px 16px 12px; background: linear-gradient(to bottom, rgba(255,255,255,0.95), rgba(255,255,255,0.8), transparent);
+  }
+  .map-header-row { display: flex; align-items: center; gap: 10px; }
+  .back-btn {
+    width: 40px; height: 40px; background: #fff; border-radius: 12px; border: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1); font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .map-search {
+    flex: 1; padding: 12px 16px; background: #fff; border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: none; font-size: 15px; font-family: inherit; outline: none;
+  }
+
+  #map { flex: 1; z-index: 1; }
+
+  /* ===== MATCH PANEL ===== */
+  .match-panel {
+    position: absolute; bottom: 0; left: 0; right: 0; z-index: 1000;
+    background: #fff; border-radius: 24px 24px 0 0; padding: 16px 20px calc(20px + var(--safe-bottom));
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+    transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .match-panel.visible { transform: translateY(0); }
+  .panel-handle { width: 36px; height: 4px; background: #e2e8f0; border-radius: 2px; margin: 0 auto 12px; }
+
+  .searching-state { text-align: center; padding: 20px 0; }
+  .searching-state .spinner { display: inline-block; width: 40px; height: 40px; border: 3px solid var(--green-100); border-top-color: var(--green-600); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .searching-state h3 { font-size: 17px; font-weight: 600; margin-top: 12px; }
+  .searching-state p { font-size: 13px; color: #64748b; margin-top: 4px; }
+
+  .match-found { display: none; }
+  .match-found.visible { display: block; }
+  .match-badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; background: var(--green-100); color: var(--green-700); border-radius: 8px; font-size: 12px; font-weight: 600; margin-bottom: 12px; }
+  .eco-tag { display: inline-flex; margin-left: 6px; padding: 3px 8px; background: #ecfdf5; color: var(--teal-600); border-radius: 6px; font-size: 11px; font-weight: 500; }
+
+  .driver-row { display: flex; align-items: center; gap: 14px; }
+  .driver-avatar { width: 50px; height: 50px; background: linear-gradient(135deg, var(--green-500), var(--green-700)); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 20px; font-weight: 700; }
+  .driver-name { font-size: 17px; font-weight: 600; }
+  .driver-rating { font-size: 13px; color: #f59e0b; margin-top: 1px; }
+  .driver-car { font-size: 12px; color: #64748b; margin-top: 1px; }
+
+  .meta-row { display: flex; gap: 12px; margin-top: 14px; padding-top: 14px; border-top: 1px solid #f1f5f9; }
+  .meta-item { flex: 1; text-align: center; }
+  .meta-val { font-size: 17px; font-weight: 700; }
+  .meta-lbl { font-size: 11px; color: #94a3b8; margin-top: 1px; }
+
+  .btn-green {
+    width: 100%; padding: 16px; border-radius: 14px; border: none;
+    background: linear-gradient(135deg, var(--green-600), var(--forest));
+    color: #fff; font-size: 16px; font-weight: 600; font-family: inherit; cursor: pointer; margin-top: 14px;
+  }
+  .btn-green:active { transform: scale(0.98); }
+
+  /* ===== TRACKING PANEL ===== */
+  .tracking-info { display: none; }
+  .tracking-info.visible { display: block; }
+  .status-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .status-dot { width: 10px; height: 10px; background: var(--green-500); border-radius: 50%; animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .status-text { font-size: 16px; font-weight: 600; }
+  .status-eta { font-size: 13px; color: #64748b; }
+
+  .track-driver-card { display: flex; align-items: center; gap: 12px; padding: 14px; background: var(--green-50); border-radius: 14px; margin-bottom: 14px; }
+  .car-plate { display: inline-block; margin-top: 4px; padding: 2px 8px; background: #fff; border: 2px solid #0f172a; border-radius: 3px; font-size: 12px; font-weight: 700; letter-spacing: 1px; }
+
+  .action-row { display: flex; gap: 10px; }
+  .btn-chat { flex: 1; padding: 14px; border-radius: 12px; border: none; font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; }
+  .btn-chat.msg { background: var(--green-100); color: var(--green-700); }
+  .btn-chat.done { background: #ecfdf5; color: var(--teal-600); }
+
+  /* ===== CHAT SCREEN ===== */
+  #chat-screen { background: var(--green-50); }
+  .chat-header {
+    padding: 50px 16px 12px; background: #fff; border-bottom: 1px solid #f1f5f9;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .chat-name { font-size: 16px; font-weight: 600; }
+  .chat-status { font-size: 11px; color: var(--green-600); }
+  .messages { flex: 1; padding: 16px 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+  .msg { max-width: 78%; padding: 10px 14px; border-radius: 16px; font-size: 14px; line-height: 1.4; }
+  .msg.in { background: #fff; align-self: flex-start; border-bottom-left-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  .msg.out { background: var(--green-600); color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
+  .msg .time { font-size: 10px; opacity: 0.5; margin-top: 3px; }
+  .quick-btns { display: flex; gap: 6px; padding: 8px 20px; overflow-x: auto; background: #fff; border-top: 1px solid #f1f5f9; }
+  .quick-btn { padding: 8px 12px; background: var(--green-100); border-radius: 18px; font-size: 12px; color: var(--green-700); border: none; font-family: inherit; cursor: pointer; white-space: nowrap; font-weight: 500; }
+  .chat-input-row { display: flex; gap: 8px; padding: 10px 20px calc(14px + var(--safe-bottom)); background: #fff; align-items: center; }
+  .chat-input { flex: 1; padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 20px; font-size: 14px; font-family: inherit; outline: none; background: var(--green-50); }
+  .chat-input:focus { border-color: var(--green-500); background: #fff; }
+  .send-btn { width: 40px; height: 40px; background: var(--green-600); border-radius: 50%; border: none; color: #fff; font-size: 16px; cursor: pointer; }
+
+  /* ===== RATING ===== */
+  #rating-screen { background: #fff; justify-content: center; align-items: center; padding: 32px 24px; text-align: center; }
+  .rating-icon { font-size: 60px; margin-bottom: 16px; }
+  .rating-title { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+  .rating-sub { font-size: 14px; color: #64748b; }
+  .rating-price { font-size: 36px; font-weight: 800; color: var(--green-700); margin: 12px 0 4px; }
+  .rating-detail { font-size: 13px; color: #94a3b8; margin-bottom: 20px; }
+  .stars-row { display: flex; gap: 8px; justify-content: center; margin-bottom: 20px; }
+  .star { font-size: 40px; cursor: pointer; opacity: 0.25; filter: grayscale(100%); transition: all 0.2s; }
+  .star.active { opacity: 1; filter: grayscale(0%); }
+  .co2-result { width: 100%; padding: 14px 18px; background: var(--green-100); border-radius: 14px; display: flex; align-items: center; gap: 12px; text-align: left; margin-bottom: 20px; }
+  .co2-result .icon { font-size: 28px; }
+  .co2-result h4 { font-size: 14px; font-weight: 600; color: var(--green-800); }
+  .co2-result p { font-size: 12px; color: var(--green-700); margin-top: 2px; }
+
+  /* ===== DRIVER MODE ===== */
+  #driver-screen { background: var(--green-50); }
+  .drv-header { padding: 56px 20px 0; }
+  .drv-header h2 { font-size: 22px; font-weight: 700; }
+  .drv-header p { font-size: 13px; color: #64748b; margin-top: 4px; }
+  .drv-status {
+    margin: 16px 20px 0; padding: 18px; background: linear-gradient(135deg, var(--green-700), var(--forest));
+    border-radius: 18px; color: #fff;
+  }
+  .drv-status .label { font-size: 11px; opacity: 0.7; text-transform: uppercase; letter-spacing: 1px; }
+  .drv-status .value { font-size: 18px; font-weight: 700; margin-top: 6px; }
+  .drv-status .sub { font-size: 13px; opacity: 0.7; margin-top: 4px; }
+  .car-card { margin: 16px 20px 0; padding: 18px; background: #fff; border-radius: 18px; box-shadow: 0 2px 10px rgba(22,101,52,0.06); display: flex; align-items: center; gap: 14px; }
+  .car-card .emoji { font-size: 44px; }
+  .car-card h4 { font-size: 16px; font-weight: 600; }
+  .car-card p { font-size: 12px; color: #64748b; margin-top: 2px; }
+  .settings-group { padding: 16px 20px 0; }
+  .settings-group .title { font-size: 14px; font-weight: 600; color: #64748b; margin-bottom: 8px; }
+  .setting-opt {
+    display: flex; align-items: center; gap: 12px; padding: 14px; background: #fff; border-radius: 12px;
+    margin-bottom: 8px; border: 2px solid transparent;
+  }
+  .setting-opt.active { border-color: var(--green-500); background: var(--green-50); }
+  .radio { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #cbd5e1; display: flex; align-items: center; justify-content: center; }
+  .setting-opt.active .radio { border-color: var(--green-600); background: var(--green-600); }
+  .setting-opt.active .radio::after { content: ''; width: 7px; height: 7px; background: #fff; border-radius: 50%; }
+  .setting-opt .text { font-size: 14px; }
+  .setting-opt.active .text { color: var(--green-700); font-weight: 600; }
+
+  /* ===== DRIVER MATCH NOTIFICATION ===== */
+  .drv-match-overlay {
+    display: none; position: fixed; inset: 0; z-index: 9999;
+    background: rgba(0,0,0,0.5); justify-content: center; align-items: center; padding: 24px;
+  }
+  .drv-match-overlay.visible { display: flex; }
+  .drv-match-card {
+    background: #fff; border-radius: 24px; padding: 24px; width: 100%; max-width: 340px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3); text-align: center;
+  }
+  .drv-match-card h3 { font-size: 20px; font-weight: 700; margin: 12px 0 4px; }
+  .drv-match-card .route { font-size: 13px; color: #64748b; margin-bottom: 16px; }
+  .drv-match-btns { display: flex; gap: 10px; }
+  .drv-match-btns button { flex: 1; padding: 14px; border-radius: 12px; border: none; font-size: 15px; font-weight: 600; font-family: inherit; cursor: pointer; }
+  .btn-decline { background: #fee2e2; color: #dc2626; }
+  .btn-accept { background: var(--green-600); color: #fff; }
+
+  /* Leaflet overrides */
+  .leaflet-control-attribution { font-size: 9px !important; }
+</style>
+</head>
+<body>
+
+<!-- ===== SPLASH ===== -->
+<div class="screen active" id="splash">
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:40px;background:linear-gradient(160deg,#166534,#14532d,#0f3d21);">
+    <div class="splash-logo">🌱</div>
+    <div class="splash-title">Huckepack</div>
+    <div class="splash-sub">Spontan mitfahren. Einfach. Günstig. Grün.</div>
+    <div class="splash-badge">🌿 Jede Fahrt zählt für unseren Planeten</div>
+    <button class="btn-primary" onclick="initApp()">Los geht's</button>
+  </div>
+</div>
+
+<!-- ===== HOME ===== -->
+<div class="screen" id="home">
+  <div class="home-header">
+    <div class="greeting">Hallo, <span>Paul</span> 👋</div>
+    <div class="avatar" onclick="showScreen('profile-screen')">P</div>
+  </div>
+
+  <div class="search-bar">
+    <span>📍</span>
+    <input type="text" id="destination-input" placeholder="Wohin möchtest du?">
+    <button class="search-go" onclick="startSearch()">→</button>
+  </div>
+
+  <div class="mode-cards">
+    <div class="mode-card active" id="mode-walker" onclick="setMode('walker')">
+      <div class="icon">🚶</div>
+      <div class="label">Mitfahren</div>
+      <div class="desc">Finde eine Fahrt</div>
+    </div>
+    <div class="mode-card" id="mode-driver" onclick="setMode('driver')">
+      <div class="icon">🚗</div>
+      <div class="label">Fahren</div>
+      <div class="desc">Nimm jemanden mit</div>
+    </div>
+  </div>
+
+  <div class="eco-banner">
+    <div class="icon">🌍</div>
+    <div>
+      <h4>München fährt zusammen</h4>
+      <p>Die Community hat diese Woche 142 kg CO₂ eingespart!</p>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card"><div class="val">12</div><div class="lbl">Fahrten</div></div>
+    <div class="stat-card"><div class="val">4,2 kg</div><div class="lbl">CO₂ gespart</div></div>
+    <div class="stat-card"><div class="val">4,9 ⭐</div><div class="lbl">Bewertung</div></div>
+  </div>
+
+  <div class="bottom-nav">
+    <button class="nav-btn active" onclick="showScreen('home')"><span class="icon">🏠</span><span class="lbl">Home</span></button>
+    <button class="nav-btn" onclick="startSearch()"><span class="icon">🔍</span><span class="lbl">Suche</span></button>
+    <button class="nav-btn" onclick="showScreen('driver-screen')"><span class="icon">🚗</span><span class="lbl">Fahren</span></button>
+    <button class="nav-btn" onclick="showScreen('profile-screen')"><span class="icon">🌿</span><span class="lbl">Impact</span></button>
+  </div>
+</div>
+
+<!-- ===== MAP SCREEN ===== -->
+<div class="screen" id="map-screen">
+  <div class="map-header">
+    <div class="map-header-row">
+      <button class="back-btn" onclick="showScreen('home')">←</button>
+      <input class="map-search" id="map-dest-input" placeholder="Ziel eingeben..." value="">
+    </div>
+  </div>
+  <div id="map"></div>
+
+  <div class="match-panel" id="match-panel">
+    <div class="panel-handle"></div>
+
+    <div class="searching-state" id="searching-state">
+      <div class="spinner"></div>
+      <h3>Suche Fahrer in deiner Nähe...</h3>
+      <p>Wir finden jemanden, der in deine Richtung fährt</p>
+    </div>
+
+    <div class="match-found" id="match-found">
+      <span class="match-badge">🌱 Match!</span>
+      <span class="eco-tag">🌿 spart 0,68 kg CO₂</span>
+      <div class="driver-row" style="margin-top:12px;">
+        <div class="driver-avatar" id="match-avatar">M</div>
+        <div>
+          <div class="driver-name" id="match-name">Marco</div>
+          <div class="driver-rating" id="match-rating">⭐ 4.8 (127 Fahrten)</div>
+          <div class="driver-car" id="match-car">VW Golf, schwarz • M-AB 1234</div>
+        </div>
+      </div>
+      <div class="meta-row">
+        <div class="meta-item"><div class="meta-val" id="match-eta">3 Min</div><div class="meta-lbl">Abholung</div></div>
+        <div class="meta-item"><div class="meta-val" id="match-dist">4,2 km</div><div class="meta-lbl">Strecke</div></div>
+        <div class="meta-item"><div class="meta-val" id="match-price">0,84 €</div><div class="meta-lbl">Preis</div></div>
+      </div>
+      <button class="btn-green" onclick="acceptMatch()">🌱 Mitfahrt anfragen</button>
+    </div>
+
+    <div class="tracking-info" id="tracking-info">
+      <div class="status-row">
+        <div class="status-dot"></div>
+        <div><div class="status-text" id="track-status">Marco ist unterwegs</div><div class="status-eta" id="track-eta">Ankunft in ca. 3 Minuten</div></div>
+      </div>
+      <div class="track-driver-card">
+        <div class="driver-avatar" style="width:44px;height:44px;font-size:18px;">M</div>
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:600;">VW Golf, schwarz</div>
+          <div class="car-plate">M-AB 1234</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:18px;font-weight:700;">0,84 €</div>
+          <div style="font-size:11px;color:#64748b;">4,2 km</div>
+        </div>
+      </div>
+      <div class="action-row">
+        <button class="btn-chat msg" onclick="showScreen('chat-screen')">💬 Nachricht</button>
+        <button class="btn-chat done" onclick="completeRide()">✓ Angekommen</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CHAT ===== -->
+<div class="screen" id="chat-screen">
+  <div class="chat-header">
+    <button class="back-btn" onclick="showScreen('map-screen')" style="width:36px;height:36px;font-size:16px;">←</button>
+    <div class="driver-avatar" style="width:36px;height:36px;font-size:14px;">M</div>
+    <div><div class="chat-name">Marco</div><div class="chat-status">🟢 Online – 3 Min entfernt</div></div>
+  </div>
+  <div class="messages" id="chat-messages">
+    <div class="msg in">Hallo Paul! Bin in ca. 3 Min bei dir. Stehe dann kurz an der Haltestelle.<div class="time">9:43</div></div>
+  </div>
+  <div class="quick-btns">
+    <button class="quick-btn" onclick="sendQuick('📍 Bin am Treffpunkt')">📍 Bin am Treffpunkt</button>
+    <button class="quick-btn" onclick="sendQuick('⏱ Brauche 2 Min')">⏱ Brauche 2 Min</button>
+    <button class="quick-btn" onclick="sendQuick('👋 Danke!')">👋 Danke!</button>
+  </div>
+  <div class="chat-input-row">
+    <input class="chat-input" id="chat-text" placeholder="Nachricht schreiben..." onkeydown="if(event.key==='Enter')sendMsg()">
+    <button class="send-btn" onclick="sendMsg()">➤</button>
+  </div>
+</div>
+
+<!-- ===== RATING ===== -->
+<div class="screen" id="rating-screen">
+  <div class="rating-icon">🌱</div>
+  <div class="rating-title">Fahrt abgeschlossen!</div>
+  <div class="rating-sub">Du bist angekommen</div>
+  <div class="rating-price" id="final-price">0,84 €</div>
+  <div class="rating-detail" id="final-detail">4,2 km • 8 Minuten • via Apple Pay</div>
+  <div class="stars-row" id="stars-row"></div>
+  <div class="co2-result">
+    <div class="icon">🌿</div>
+    <div>
+      <h4 id="co2-saved">0,68 kg CO₂ eingespart!</h4>
+      <p>Entspricht 4,5 km weniger Autoverkehr</p>
+    </div>
+  </div>
+  <button class="btn-green" onclick="showScreen('home')" style="max-width:320px;">🌱 Fertig</button>
+</div>
+
+<!-- ===== DRIVER MODE ===== -->
+<div class="screen" id="driver-screen">
+  <div class="drv-header">
+    <h2>🚗 Fahrer-Modus</h2>
+    <p>Nimm jemanden mit – für die Umwelt und dein Portemonnaie</p>
+  </div>
+  <div class="drv-status">
+    <div class="label">Status</div>
+    <div class="value" id="drv-status-text">🟢 Bereit für Mitfahrer</div>
+    <div class="sub">Deine nächste Navigation wird automatisch geteilt</div>
+  </div>
+  <div class="car-card">
+    <div class="emoji">🚙</div>
+    <div>
+      <h4>BMW 3er, weiß</h4>
+      <p>Baujahr 2022 • 4 Sitzplätze</p>
+      <div class="car-plate" style="margin-top:6px;">M-PH 2026</div>
+    </div>
+  </div>
+  <div class="settings-group">
+    <div class="title">Verfügbarkeit</div>
+    <div class="setting-opt active" onclick="selectDrvSetting(this)"><div class="radio"></div><div class="text">🟢 Immer bereit</div></div>
+    <div class="setting-opt" onclick="selectDrvSetting(this)"><div class="radio"></div><div class="text">🟡 Jedes Mal fragen</div></div>
+    <div class="setting-opt" onclick="selectDrvSetting(this)"><div class="radio"></div><div class="text">🔴 Nächste Fahrt aussetzen</div></div>
+  </div>
+  <div style="padding:16px 20px;">
+    <button class="btn-green" onclick="startDriverNav()">🗺️ Navigation starten & Mitfahrer suchen</button>
+  </div>
+  <div class="bottom-nav">
+    <button class="nav-btn" onclick="showScreen('home')"><span class="icon">🏠</span><span class="lbl">Home</span></button>
+    <button class="nav-btn" onclick="startSearch()"><span class="icon">🔍</span><span class="lbl">Suche</span></button>
+    <button class="nav-btn active"><span class="icon">🚗</span><span class="lbl">Fahren</span></button>
+    <button class="nav-btn" onclick="showScreen('profile-screen')"><span class="icon">🌿</span><span class="lbl">Impact</span></button>
+  </div>
+</div>
+
+<!-- ===== PROFILE ===== -->
+<div class="screen" id="profile-screen">
+  <div style="padding:50px 20px 0;">
+    <button class="back-btn" onclick="showScreen('home')">←</button>
+  </div>
+  <div style="margin:16px 20px;padding:24px;background:linear-gradient(135deg,var(--green-700),var(--forest));border-radius:22px;color:#fff;text-align:center;">
+    <div class="avatar" style="width:64px;height:64px;font-size:28px;margin:0 auto 10px;background:rgba(255,255,255,0.2);border:2px solid rgba(255,255,255,0.3);">P</div>
+    <div style="font-size:22px;font-weight:700;">Paul</div>
+    <div style="font-size:12px;margin-top:6px;padding:3px 10px;background:rgba(255,255,255,0.2);border-radius:16px;display:inline-block;">✅ Verifiziert • 🌿 Eco-Hero</div>
+    <div style="display:flex;justify-content:space-around;margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.2);">
+      <div><div style="font-size:18px;font-weight:700;">12</div><div style="font-size:10px;opacity:0.7;">Fahrten</div></div>
+      <div><div style="font-size:18px;font-weight:700;">4,9</div><div style="font-size:10px;opacity:0.7;">Bewertung</div></div>
+      <div><div style="font-size:18px;font-weight:700;">4,2 kg</div><div style="font-size:10px;opacity:0.7;">CO₂ gespart</div></div>
+    </div>
+  </div>
+
+  <div style="margin:0 20px;padding:14px 18px;background:#fff;border-radius:16px;box-shadow:0 2px 10px rgba(22,101,52,0.06);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <span style="font-size:14px;font-weight:600;">🌱 Eco-Level: Sprössling</span>
+      <span style="font-size:12px;color:var(--green-700);font-weight:600;background:var(--green-100);padding:2px 8px;border-radius:6px;">Level 3</span>
+    </div>
+    <div style="width:100%;height:6px;background:var(--green-100);border-radius:3px;overflow:hidden;margin-bottom:4px;">
+      <div style="width:68%;height:100%;background:linear-gradient(90deg,var(--green-500),var(--teal-500));border-radius:3px;"></div>
+    </div>
+    <div style="font-size:11px;color:#64748b;">Noch 1,8 kg CO₂ bis Level 4 "Junger Baum" 🌳</div>
+  </div>
+
+  <div style="padding:16px 20px;">
+    <div style="padding:14px 0;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:12px;">
+      <span style="width:36px;height:36px;background:#dcfce7;border-radius:10px;display:flex;align-items:center;justify-content:center;">👤</span>
+      <span style="flex:1;font-size:15px;">Persönliche Daten</span><span style="color:#cbd5e1;">›</span>
+    </div>
+    <div style="padding:14px 0;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:12px;" onclick="showScreen('driver-screen')">
+      <span style="width:36px;height:36px;background:#e0f2fe;border-radius:10px;display:flex;align-items:center;justify-content:center;">🚗</span>
+      <span style="flex:1;font-size:15px;">Mein Auto</span><span style="color:#cbd5e1;">›</span>
+    </div>
+    <div style="padding:14px 0;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:12px;">
+      <span style="width:36px;height:36px;background:#fef3c7;border-radius:10px;display:flex;align-items:center;justify-content:center;">💳</span>
+      <span style="flex:1;font-size:15px;">Zahlungsmethoden</span><span style="color:#cbd5e1;">›</span>
+    </div>
+    <div style="padding:14px 0;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:12px;">
+      <span style="width:36px;height:36px;background:#d1fae5;border-radius:10px;display:flex;align-items:center;justify-content:center;">🌿</span>
+      <span style="flex:1;font-size:15px;">Mein CO₂-Dashboard</span><span style="color:#cbd5e1;">›</span>
+    </div>
+  </div>
+</div>
+
+<!-- ===== DRIVER MATCH OVERLAY ===== -->
+<div class="drv-match-overlay" id="drv-match-overlay">
+  <div class="drv-match-card">
+    <div style="font-size:40px;">🌱</div>
+    <h3>Mitfahrer gefunden!</h3>
+    <div class="route"><strong>Lisa</strong> möchte von Schwabing zum Marienplatz<br>Umweg: +200m • Verdienst: <strong>0,76 €</strong></div>
+    <div class="drv-match-btns">
+      <button class="btn-decline" onclick="declineDriverMatch()">Ablehnen</button>
+      <button class="btn-accept" onclick="acceptDriverMatch()">Annehmen</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== APP STATE =====
+let map, userMarker, driverMarker, destMarker, routeLine;
+let userPos = { lat: 48.1351, lng: 11.5820 }; // München default
+let appMode = 'walker';
+let currentScreen = 'splash';
+
+// Simulated drivers near user
+const drivers = [
+  { name: 'Marco', initial: 'M', rating: 4.8, trips: 127, car: 'VW Golf, schwarz', plate: 'M-AB 1234', color: '#22c55e' },
+  { name: 'Sarah', initial: 'S', rating: 4.9, trips: 89, car: 'Toyota Yaris, blau', plate: 'M-SK 7891', color: '#14b8a6' },
+  { name: 'Tom', initial: 'T', rating: 4.7, trips: 203, car: 'Opel Corsa, rot', plate: 'M-TW 4562', color: '#f59e0b' },
+];
+
+// ===== SCREEN NAV =====
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  currentScreen = id;
+
+  if (id === 'map-screen' && !map) initMap();
+  if (id === 'map-screen' && map) {
+    setTimeout(() => map.invalidateSize(), 100);
+  }
+}
+
+function initApp() {
+  // Request location
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      pos => { userPos = { lat: pos.coords.latitude, lng: pos.coords.longitude }; },
+      () => {},
+      { enableHighAccuracy: true }
+    );
+  }
+  showScreen('home');
+}
+
+// ===== MODE =====
+function setMode(mode) {
+  appMode = mode;
+  document.getElementById('mode-walker').classList.toggle('active', mode === 'walker');
+  document.getElementById('mode-driver').classList.toggle('active', mode === 'driver');
+  if (mode === 'driver') {
+    setTimeout(() => showScreen('driver-screen'), 200);
+  }
+}
+
+// ===== MAP =====
+function initMap() {
+  map = L.map('map', { zoomControl: false }).setView([userPos.lat, userPos.lng], 15);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap'
+  }).addTo(map);
+
+  // User marker
+  const userIcon = L.divIcon({
+    html: '<div style="width:18px;height:18px;background:#16a34a;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(22,163,74,0.5);"></div>',
+    iconSize: [18, 18], className: ''
+  });
+  userMarker = L.marker([userPos.lat, userPos.lng], { icon: userIcon }).addTo(map);
+
+  // Watch position
+  if (navigator.geolocation) {
+    navigator.geolocation.watchPosition(pos => {
+      userPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      userMarker.setLatLng([userPos.lat, userPos.lng]);
+    }, () => {}, { enableHighAccuracy: true });
+  }
+}
+
+// ===== SEARCH =====
+function startSearch() {
+  const dest = document.getElementById('destination-input').value || 'Marienplatz';
+  document.getElementById('map-dest-input').value = dest;
+  showScreen('map-screen');
+
+  setTimeout(() => {
+    if (map) map.invalidateSize();
+    map.setView([userPos.lat, userPos.lng], 14);
+
+    // Show destination marker (offset from user)
+    const destPos = {
+      lat: userPos.lat + (Math.random() - 0.3) * 0.02,
+      lng: userPos.lng + (Math.random() - 0.3) * 0.02
+    };
+    if (destMarker) map.removeLayer(destMarker);
+    const destIcon = L.divIcon({
+      html: '<div style="font-size:28px;">📍</div>',
+      iconSize: [28, 28], className: ''
+    });
+    destMarker = L.marker([destPos.lat, destPos.lng], { icon: destIcon }).addTo(map);
+
+    // Draw route line
+    if (routeLine) map.removeLayer(routeLine);
+    routeLine = L.polyline([[userPos.lat, userPos.lng], [destPos.lat, destPos.lng]], {
+      color: '#16a34a', weight: 4, opacity: 0.7, dashArray: '8, 8'
+    }).addTo(map);
+
+    map.fitBounds(routeLine.getBounds(), { padding: [80, 80] });
+
+    // Show search panel
+    const panel = document.getElementById('match-panel');
+    panel.classList.add('visible');
+    document.getElementById('searching-state').style.display = 'block';
+    document.getElementById('match-found').classList.remove('visible');
+    document.getElementById('tracking-info').classList.remove('visible');
+
+    // Simulate finding a driver
+    setTimeout(() => simulateMatch(destPos), 2500);
+  }, 300);
+}
+
+function simulateMatch(destPos) {
+  const driver = drivers[Math.floor(Math.random() * drivers.length)];
+  const dist = (3 + Math.random() * 5).toFixed(1);
+  const price = (dist * 0.2).toFixed(2);
+  const eta = Math.floor(2 + Math.random() * 4);
+  const co2 = (dist * 0.162).toFixed(2);
+
+  // Place driver on map
+  const driverPos = {
+    lat: userPos.lat + (Math.random() - 0.5) * 0.008,
+    lng: userPos.lng + (Math.random() - 0.5) * 0.008
+  };
+  if (driverMarker) map.removeLayer(driverMarker);
+  const driverIcon = L.divIcon({
+    html: '<div style="font-size:28px;">🚗</div>',
+    iconSize: [28, 28], className: ''
+  });
+  driverMarker = L.marker([driverPos.lat, driverPos.lng], { icon: driverIcon }).addTo(map);
+
+  // Update match info
+  document.getElementById('match-avatar').textContent = driver.initial;
+  document.getElementById('match-name').textContent = driver.name;
+  document.getElementById('match-rating').textContent = `⭐ ${driver.rating} (${driver.trips} Fahrten)`;
+  document.getElementById('match-car').textContent = `${driver.car} • ${driver.plate}`;
+  document.getElementById('match-eta').textContent = `${eta} Min`;
+  document.getElementById('match-dist').textContent = `${dist} km`;
+  document.getElementById('match-price').textContent = `${price} €`;
+
+  // Store for later
+  window.currentMatch = { driver, dist, price, eta, co2, driverPos, destPos };
+
+  // Show match
+  document.getElementById('searching-state').style.display = 'none';
+  document.getElementById('match-found').classList.add('visible');
+}
+
+function acceptMatch() {
+  document.getElementById('match-found').classList.remove('visible');
+  document.getElementById('tracking-info').classList.add('visible');
+
+  const m = window.currentMatch;
+  document.getElementById('track-status').textContent = `${m.driver.name} ist unterwegs`;
+  document.getElementById('track-eta').textContent = `Ankunft in ca. ${m.eta} Minuten`;
+
+  // Animate driver toward user
+  animateDriver(m.driverPos);
+}
+
+function animateDriver(startPos) {
+  let step = 0;
+  const steps = 60;
+  const interval = setInterval(() => {
+    step++;
+    const progress = step / steps;
+    const lat = startPos.lat + (userPos.lat - startPos.lat) * progress;
+    const lng = startPos.lng + (userPos.lng - startPos.lng) * progress;
+    if (driverMarker) driverMarker.setLatLng([lat, lng]);
+
+    if (step >= steps) {
+      clearInterval(interval);
+      document.getElementById('track-eta').textContent = 'Ist bei dir angekommen!';
+      document.getElementById('track-status').textContent = `${window.currentMatch.driver.name} ist da!`;
+    }
+  }, 200);
+}
+
+function completeRide() {
+  const m = window.currentMatch;
+  document.getElementById('final-price').textContent = `${m.price} €`;
+  document.getElementById('final-detail').textContent = `${m.dist} km • ${Math.floor(parseInt(m.dist) * 2)} Minuten • via Apple Pay`;
+  document.getElementById('co2-saved').textContent = `${m.co2} kg CO₂ eingespart!`;
+
+  // Build stars
+  const starsRow = document.getElementById('stars-row');
+  starsRow.innerHTML = '';
+  for (let i = 1; i <= 5; i++) {
+    const star = document.createElement('span');
+    star.className = 'star' + (i <= 4 ? ' active' : '');
+    star.textContent = '⭐';
+    star.onclick = () => {
+      starsRow.querySelectorAll('.star').forEach((s, idx) => s.classList.toggle('active', idx < i));
+    };
+    starsRow.appendChild(star);
+  }
+
+  // Reset map state
+  const panel = document.getElementById('match-panel');
+  panel.classList.remove('visible');
+  document.getElementById('tracking-info').classList.remove('visible');
+
+  showScreen('rating-screen');
+}
+
+// ===== CHAT =====
+function sendMsg() {
+  const input = document.getElementById('chat-text');
+  const text = input.value.trim();
+  if (!text) return;
+  addChatMsg(text, 'out');
+  input.value = '';
+
+  // Simulate reply
+  setTimeout(() => {
+    const replies = ['Alles klar! 👍', 'Bin gleich da!', 'Super, bis gleich! 🚗', 'Perfekt!'];
+    addChatMsg(replies[Math.floor(Math.random() * replies.length)], 'in');
+  }, 1500);
+}
+
+function sendQuick(text) {
+  addChatMsg(text, 'out');
+  setTimeout(() => {
+    const replies = ['Super, danke! 😊', 'Alles klar, bin gleich da!', 'Kein Problem! 👍'];
+    addChatMsg(replies[Math.floor(Math.random() * replies.length)], 'in');
+  }, 1200);
+}
+
+function addChatMsg(text, type) {
+  const container = document.getElementById('chat-messages');
+  const msg = document.createElement('div');
+  msg.className = `msg ${type}`;
+  const now = new Date();
+  msg.innerHTML = `${text}<div class="time">${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}</div>`;
+  container.appendChild(msg);
+  container.scrollTop = container.scrollHeight;
+}
+
+// ===== DRIVER MODE =====
+function selectDrvSetting(el) {
+  el.parentElement.querySelectorAll('.setting-opt').forEach(o => o.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function startDriverNav() {
+  showScreen('map-screen');
+  setTimeout(() => {
+    if (map) map.invalidateSize();
+    map.setView([userPos.lat, userPos.lng], 14);
+
+    // Simulate receiving a match request after a few seconds
+    setTimeout(() => {
+      document.getElementById('drv-match-overlay').classList.add('visible');
+    }, 3000);
+  }, 300);
+}
+
+function declineDriverMatch() {
+  document.getElementById('drv-match-overlay').classList.remove('visible');
+}
+
+function acceptDriverMatch() {
+  document.getElementById('drv-match-overlay').classList.remove('visible');
+
+  // Show tracking panel in driver mode
+  const panel = document.getElementById('match-panel');
+  panel.classList.add('visible');
+  document.getElementById('searching-state').style.display = 'none';
+  document.getElementById('match-found').classList.remove('visible');
+  document.getElementById('tracking-info').classList.add('visible');
+  document.getElementById('track-status').textContent = 'Lisa wartet am Treffpunkt';
+  document.getElementById('track-eta').textContent = 'Leopoldstraße 42 • 200m Umweg';
+
+  // Place rider marker
+  const riderPos = {
+    lat: userPos.lat + 0.002,
+    lng: userPos.lng + 0.001
+  };
+  const riderIcon = L.divIcon({
+    html: '<div style="font-size:24px;">🚶‍♀️</div>',
+    iconSize: [24, 24], className: ''
+  });
+  L.marker([riderPos.lat, riderPos.lng], { icon: riderIcon }).addTo(map);
+
+  window.currentMatch = {
+    driver: { name: 'Lisa' },
+    dist: '3.8', price: '0.76', eta: 2, co2: '0.62',
+    driverPos: userPos, destPos: riderPos
+  };
+}
+</script>
+
+</body>
+</html>
