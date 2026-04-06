@@ -1,0 +1,1520 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#166534">
+<title>Huckepack</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Firebase SDK (placeholder config, will be set later) -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+  :root {
+    --green-50: #f0fdf4; --green-100: #dcfce7; --green-200: #bbf7d0;
+    --green-500: #22c55e; --green-600: #16a34a; --green-700: #15803d;
+    --green-800: #166534; --green-900: #14532d;
+    --teal-500: #14b8a6; --teal-600: #0d9488;
+    --forest: #1a5c35;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--green-50);
+    color: #0f172a;
+    overflow: hidden;
+    height: 100dvh;
+    width: 100vw;
+    position: fixed;
+  }
+
+  /* ===== SCREENS ===== */
+  .screen { display: none; position: absolute; inset: 0; flex-direction: column; }
+  .screen.active { display: flex; }
+
+  /* ===== LOGIN ===== */
+  #login {
+    background: linear-gradient(160deg, #166534, #14532d, #0f3d21);
+    justify-content: center; align-items: center; padding: 40px 24px; text-align: center;
+  }
+  .login-container { width: 100%; max-width: 360px; }
+  .login-logo { font-size: 56px; margin-bottom: 12px; }
+  .login-title { font-size: 28px; font-weight: 800; color: #fff; margin-bottom: 8px; }
+  .login-sub { font-size: 14px; color: rgba(255,255,255,0.6); margin-bottom: 32px; }
+  .login-btn {
+    width: 100%; padding: 14px; border-radius: 12px; border: none; font-size: 15px;
+    font-weight: 600; font-family: inherit; cursor: pointer; margin-bottom: 12px;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .login-google {
+    background: #fff; color: #0f172a; border: 1px solid #e5e7eb;
+  }
+  .login-google:active { background: #f9fafb; }
+  .login-divider {
+    color: rgba(255,255,255,0.4); font-size: 13px; margin: 16px 0;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .login-divider::before, .login-divider::after {
+    content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.1);
+  }
+  .login-form { margin-bottom: 24px; }
+  .login-input {
+    width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.1); color: #fff; font-family: inherit; font-size: 15px;
+    margin-bottom: 12px;
+  }
+  .login-input::placeholder { color: rgba(255,255,255,0.5); }
+  .login-input:focus { outline: none; background: rgba(255,255,255,0.15); border-color: #fff; }
+  .login-submit {
+    width: 100%; padding: 14px; border-radius: 12px; border: none; font-size: 15px;
+    font-weight: 600; font-family: inherit; cursor: pointer; background: #22c55e; color: #fff;
+    margin-bottom: 12px;
+  }
+  .login-submit:active { background: #16a34a; }
+  .login-register-link {
+    color: rgba(255,255,255,0.6); text-decoration: none; font-size: 14px;
+  }
+  .login-register-link:hover { color: #fff; }
+  .login-toggle-form {
+    background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2);
+    padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
+    cursor: pointer; font-family: inherit; margin-top: 16px;
+  }
+  .login-form.hidden { display: none; }
+
+  /* ===== SPLASH ===== */
+  #splash {
+    background: linear-gradient(160deg, #166534, #14532d, #0f3d21);
+    justify-content: center; align-items: center; text-align: center; padding: 40px;
+  }
+  .splash-logo { font-size: 64px; margin-bottom: 16px; }
+  .splash-title { font-size: 42px; font-weight: 800; color: #fff; letter-spacing: -1px; }
+  .splash-sub { font-size: 16px; color: rgba(255,255,255,0.7); margin: 8px 0 32px; }
+  .splash-badge { padding: 8px 16px; background: rgba(74,222,128,0.15); border: 1px solid rgba(74,222,128,0.3); border-radius: 20px; color: #86efac; font-size: 13px; margin-bottom: 48px; }
+  .btn-primary {
+    width: 100%; max-width: 320px; padding: 16px; border-radius: 16px; border: none;
+    font-size: 17px; font-weight: 600; font-family: inherit; cursor: pointer;
+    background: #fff; color: var(--green-800); margin-bottom: 12px;
+  }
+  .btn-secondary {
+    width: 100%; max-width: 320px; padding: 16px; border-radius: 16px;
+    font-size: 17px; font-weight: 600; font-family: inherit; cursor: pointer;
+    background: rgba(255,255,255,0.1); color: #fff; border: 1.5px solid rgba(255,255,255,0.25);
+  }
+
+  /* ===== ONBOARDING ===== */
+  #onboarding { background: linear-gradient(160deg, #166534, #14532d, #0f3d21); }
+  .onboarding-container { flex: 1; display: flex; flex-direction: column; }
+  .onboarding-content { flex: 1; display: flex; align-items: center; justify-content: center; padding: 40px 24px; }
+  .onboarding-slide { display: none; text-align: center; color: #fff; width: 100%; }
+  .onboarding-slide.active { display: block; animation: slideIn 0.4s ease-out; }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  .onboarding-slide h2 { font-size: 28px; font-weight: 700; margin-bottom: 12px; }
+  .onboarding-slide .icon { font-size: 80px; margin-bottom: 20px; }
+  .onboarding-slide p { font-size: 16px; opacity: 0.8; line-height: 1.5; }
+  .onboarding-dots { display: flex; gap: 8px; justify-content: center; margin: 20px 0; }
+  .dot { width: 8px; height: 8px; background: rgba(255,255,255,0.3); border-radius: 50%; transition: all 0.3s; }
+  .dot.active { background: #fff; width: 24px; border-radius: 4px; }
+  .onboarding-footer { padding: 24px; display: flex; gap: 12px; }
+  .onboarding-footer button { flex: 1; padding: 14px; border-radius: 12px; border: none; font-weight: 600; cursor: pointer; font-family: inherit; font-size: 15px; }
+  .onboarding-next { background: #fff; color: var(--green-800); }
+  .onboarding-skip { background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); }
+
+  /* Onboarding form screens */
+  .onboarding-form { text-align: left; color: #fff; }
+  .onboarding-form h2 { font-size: 24px; font-weight: 700; margin-bottom: 24px; text-align: center; }
+  .form-group { margin-bottom: 20px; }
+  .form-group label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 8px; color: rgba(255,255,255,0.9); }
+  .form-group input, .form-group select { width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: #fff; font-family: inherit; font-size: 15px; }
+  .form-group input::placeholder { color: rgba(255,255,255,0.5); }
+  .form-group input:focus, .form-group select:focus { outline: none; background: rgba(255,255,255,0.15); border-color: #fff; }
+  .mode-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+  .mode-btn { padding: 16px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.2s; }
+  .mode-btn.active { background: rgba(255,255,255,0.25); border-color: #fff; }
+  .car-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .car-inputs .form-group { margin-bottom: 16px; }
+  .car-full { grid-column: 1 / -1; }
+
+  /* ===== HOME ===== */
+  #home { background: var(--green-50); overflow-y: auto; }
+  .home-header { padding: 56px 20px 0; display: flex; justify-content: space-between; align-items: center; }
+  .greeting { font-size: 22px; font-weight: 700; }
+  .greeting span { color: var(--green-700); }
+  .avatar {
+    width: 42px; height: 42px; background: linear-gradient(135deg, var(--green-600), var(--forest));
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 700; font-size: 18px; cursor: pointer;
+  }
+
+  /* Mode cards */
+  .mode-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 24px 20px; }
+  .mode-card {
+    background: #fff; padding: 24px 16px; border-radius: 16px; text-align: center; cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06); transition: all 0.2s;
+  }
+  .mode-card:active { background: var(--green-50); transform: scale(0.98); }
+  .mode-card.active { background: var(--green-700); color: #fff; }
+  .mode-card-icon { font-size: 40px; margin-bottom: 8px; }
+  .mode-card-text { font-size: 14px; font-weight: 600; }
+
+  /* Planned rides section */
+  .planned-rides-section { padding: 0 20px 24px; }
+  .section-title { font-size: 16px; font-weight: 700; margin-bottom: 12px; }
+  .planned-ride-btn {
+    width: 100%; padding: 14px; background: var(--green-700); color: #fff; border: none;
+    border-radius: 12px; font-weight: 600; cursor: pointer; font-family: inherit; font-size: 15px;
+    margin-bottom: 12px;
+  }
+  .planned-ride-btn:active { background: var(--green-800); }
+  .planned-rides-list { display: flex; flex-direction: column; gap: 10px; }
+  .planned-ride-card {
+    background: #fff; padding: 14px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    border-left: 4px solid var(--green-600);
+  }
+  .ride-time { font-size: 13px; color: #666; margin-bottom: 4px; }
+  .ride-route { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .ride-meta { font-size: 12px; color: #999; }
+
+  /* Modals */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000;
+    align-items: flex-end;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal-content {
+    background: #fff; border-radius: 20px 20px 0 0; width: 100%; max-height: 85vh;
+    overflow-y: auto; padding: 24px 20px; padding-bottom: calc(24px + var(--safe-bottom));
+  }
+  .modal-header { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+  .modal-close {
+    position: absolute; top: 16px; right: 16px; background: none; border: none;
+    font-size: 24px; cursor: pointer; color: #0f172a; padding: 0; width: 32px; height: 32px;
+  }
+
+  /* ===== SEARCH & MAP ===== */
+  #map-screen { background: #fff; }
+  .map-header { padding: 12px 16px; background: #fff; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; gap: 8px; }
+  .back-btn {
+    width: 36px; height: 36px; border-radius: 50%; border: none; background: var(--green-50);
+    color: var(--green-700); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .search-input-wrapper { flex: 1; }
+  .search-input {
+    width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #e5e7eb;
+    font-family: inherit; font-size: 14px;
+  }
+  .search-input:focus { outline: none; border-color: var(--green-600); }
+  .geocoding-dropdown {
+    position: absolute; top: 100%; left: 0; right: 0; background: #fff;
+    border: 1px solid #e5e7eb; border-radius: 8px; max-height: 200px; overflow-y: auto;
+    display: none; z-index: 100;
+  }
+  .geocoding-dropdown.visible { display: block; }
+  .geocoding-item {
+    padding: 10px 12px; cursor: pointer; font-size: 13px; border-bottom: 1px solid #f0f0f0;
+  }
+  .geocoding-item:hover { background: var(--green-50); }
+  #map { flex: 1; z-index: 1; }
+
+  /* ===== CHAT SCREEN ===== */
+  #chat-screen { background: var(--green-50); }
+  .chat-header { padding: 12px 16px; background: #fff; border-bottom: 1px solid #e5e7eb; }
+  .chat-title { font-size: 15px; font-weight: 700; margin-bottom: 2px; }
+  .chat-subtitle { font-size: 12px; color: #666; }
+  .chat-messages {
+    flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px;
+  }
+  .msg { padding: 10px 12px; border-radius: 12px; font-size: 14px; max-width: 85%; }
+  .msg.sent { background: var(--green-600); color: #fff; align-self: flex-end; border-radius: 12px 0 12px 12px; }
+  .msg.received { background: #fff; align-self: flex-start; box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+  .location-card {
+    background: #fff; padding: 12px; border-radius: 12px; border-left: 4px solid var(--teal-600);
+    align-self: flex-start; box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  }
+  .location-badge { font-size: 12px; color: var(--teal-600); font-weight: 600; margin-bottom: 4px; }
+  .location-coords { font-size: 11px; color: #666; margin-bottom: 6px; }
+  .location-link { font-size: 12px; color: var(--teal-600); text-decoration: none; font-weight: 600; }
+  .chat-input { padding: 16px; background: #fff; border-top: 1px solid #e5e7eb; display: flex; gap: 8px; align-items: flex-end; }
+  .chat-input input {
+    flex: 1; padding: 10px 12px; border-radius: 8px; border: 1px solid #e5e7eb;
+    font-family: inherit; font-size: 14px;
+  }
+  .chat-input input:focus { outline: none; border-color: var(--green-600); }
+  .chat-btn {
+    width: 36px; height: 36px; border-radius: 8px; border: none; background: var(--green-600);
+    color: #fff; font-weight: 700; cursor: pointer; font-size: 18px; display: flex;
+    align-items: center; justify-content: center;
+  }
+  .chat-btn:active { background: var(--green-700); }
+
+  /* ===== RATING SCREEN ===== */
+  #rating-screen { background: #fff; justify-content: center; align-items: center; padding: 32px 24px; text-align: center; overflow-y: auto; }
+  .rating-content { max-width: 360px; }
+  .rating-title { font-size: 20px; font-weight: 700; margin-bottom: 12px; }
+  .rating-subtitle { font-size: 14px; color: #666; margin-bottom: 24px; }
+  .stars {
+    display: flex; justify-content: center; gap: 12px; margin-bottom: 24px; font-size: 40px;
+    cursor: pointer;
+  }
+  .star { opacity: 0.3; transition: opacity 0.2s; }
+  .star.active { opacity: 1; }
+  .rating-tags {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px;
+  }
+  .tag-btn {
+    padding: 8px; border: 1.5px solid #e5e7eb; background: #fff; border-radius: 8px;
+    font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+    transition: all 0.2s;
+  }
+  .tag-btn.active { background: var(--green-100); border-color: var(--green-600); color: var(--green-800); }
+  .comment-section { margin-bottom: 20px; text-align: left; }
+  .comment-label { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  .comment-textarea {
+    width: 100%; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 8px;
+    font-family: inherit; font-size: 13px; resize: vertical; min-height: 80px;
+  }
+  .comment-textarea:focus { outline: none; border-color: var(--green-600); }
+  .char-counter { font-size: 11px; color: #999; margin-top: 4px; }
+  .rating-btn {
+    width: 100%; padding: 14px; background: var(--green-600); color: #fff; border: none;
+    border-radius: 12px; font-weight: 600; cursor: pointer; font-family: inherit; font-size: 15px;
+  }
+  .rating-btn:active { background: var(--green-700); }
+
+  /* ===== DRIVER SCREEN ===== */
+  #driver-screen { background: var(--green-50); overflow-y: auto; }
+  .drv-header { padding: 16px 20px; background: #fff; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; }
+  .drv-title { font-size: 16px; font-weight: 700; }
+  .drv-status { font-size: 12px; color: #666; }
+  .drv-car-section { padding: 20px; }
+  .drv-car-card {
+    background: #fff; padding: 16px; border-radius: 12px; margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .drv-car-emoji { font-size: 40px; margin-bottom: 8px; }
+  .drv-car-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .drv-car-info { font-size: 13px; color: #666; margin-bottom: 8px; }
+  .drv-car-plate { font-size: 12px; font-weight: 700; color: var(--green-700); }
+  .drv-control-btns {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  }
+  .drv-btn {
+    padding: 14px; border-radius: 12px; border: none; font-weight: 600; cursor: pointer;
+    font-family: inherit; font-size: 15px;
+  }
+  .drv-online { background: var(--green-600); color: #fff; }
+  .drv-online:active { background: var(--green-700); }
+  .drv-offline { background: #fff; color: var(--green-700); border: 1.5px solid var(--green-200); }
+  .drv-offline:active { background: var(--green-50); }
+  .drv-tracking-panel {
+    position: fixed; bottom: 0; left: 0; right: 0; background: #fff;
+    border-top: 1px solid #e5e7eb; padding: 16px 20px; padding-bottom: calc(16px + var(--safe-bottom));
+    display: none; z-index: 100;
+  }
+  .drv-tracking-panel.active { display: block; }
+  .drv-tracking-info { margin-bottom: 12px; }
+  .drv-tracking-rider { font-weight: 700; margin-bottom: 4px; }
+  .drv-tracking-dest { font-size: 13px; color: #666; }
+  .drv-sos-btn {
+    position: absolute; bottom: 80px; right: 20px; width: 56px; height: 56px;
+    border-radius: 50%; background: #ef4444; color: #fff; border: none; font-weight: 700;
+    cursor: pointer; font-size: 24px; box-shadow: 0 4px 12px rgba(239,68,68,0.3);
+    display: none; align-items: center; justify-content: center;
+  }
+  .drv-sos-btn.active { display: flex; }
+  .drv-action-btns { display: flex; gap: 12px; }
+  .drv-action-btn {
+    flex: 1; padding: 10px; background: var(--green-50); border: 1.5px solid var(--green-200);
+    border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;
+    transition: all 0.2s;
+  }
+  .drv-action-btn:active { background: var(--green-100); }
+  .drv-match-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center;
+    justify-content: center; z-index: 500;
+  }
+  .drv-match-overlay.active { display: flex; }
+  .drv-match-card {
+    background: #fff; padding: 32px 24px; border-radius: 16px; text-align: center; max-width: 360px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+  }
+  .drv-match-card > div:first-child { font-size: 48px; margin-bottom: 12px; }
+  .drv-match-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 12px; }
+  .route { font-size: 14px; color: #666; margin-bottom: 24px; line-height: 1.5; }
+  .drv-match-btns { display: flex; gap: 12px; }
+  .btn-decline, .btn-accept {
+    flex: 1; padding: 12px; border-radius: 8px; border: none; font-weight: 600;
+    cursor: pointer; font-family: inherit; font-size: 14px;
+  }
+  .btn-decline { background: #f0f0f0; color: #0f172a; }
+  .btn-decline:active { background: #e5e5e5; }
+  .btn-accept { background: var(--green-600); color: #fff; }
+  .btn-accept:active { background: var(--green-700); }
+
+  /* ===== PROFILE SCREEN ===== */
+  #profile-screen { background: var(--green-50); overflow-y: auto; }
+  .profile-header { padding: 20px; text-align: center; background: #fff; border-bottom: 1px solid #e5e7eb; }
+  .profile-avatar {
+    width: 64px; height: 64px; margin: 0 auto 12px; background: linear-gradient(135deg, var(--green-600), var(--forest));
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 700; font-size: 28px;
+  }
+  .profile-name { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+  .profile-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; padding: 20px; text-align: center; }
+  .stat-item { background: #fff; padding: 12px; border-radius: 12px; }
+  .stat-value { font-size: 18px; font-weight: 700; color: var(--green-700); }
+  .stat-label { font-size: 12px; color: #666; margin-top: 4px; }
+  .profile-sections { padding: 0 20px 20px; }
+  .profile-section { background: #fff; border-radius: 12px; overflow: hidden; margin-bottom: 12px; }
+  .profile-section-item {
+    padding: 16px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between;
+    align-items: center; cursor: pointer;
+  }
+  .profile-section-item:last-child { border-bottom: none; }
+  .profile-section-item:active { background: var(--green-50); }
+  .profile-section-item-icon { font-size: 18px; margin-right: 12px; }
+  .profile-section-item-text { flex: 1; }
+  .profile-section-item-label { font-size: 14px; font-weight: 600; }
+  .profile-section-item-value { font-size: 13px; color: #666; margin-top: 2px; }
+  .profile-section-item-arrow { color: #ccc; font-size: 18px; }
+
+  /* ===== BOTTOM NAV ===== */
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 0; right: 0; height: 60px; background: #fff;
+    border-top: 1px solid #e5e7eb; display: flex; justify-content: space-around;
+    padding-bottom: var(--safe-bottom); z-index: 100;
+  }
+  .nav-btn {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: none; border: none; cursor: pointer; color: #999; font-size: 24px;
+    font-size: 20px; transition: color 0.2s;
+  }
+  .nav-btn.active { color: var(--green-700); }
+
+  /* ===== RIDE TRACKING ===== */
+  .ride-tracking-bar {
+    position: fixed; bottom: 60px; left: 0; right: 0; background: #fff;
+    border-top: 1px solid #e5e7eb; padding: 12px 20px; display: none; z-index: 99;
+  }
+  .ride-tracking-bar.active { display: block; }
+  .tracking-status { font-size: 12px; color: #666; margin-bottom: 4px; }
+  .tracking-eta { font-size: 14px; font-weight: 700; }
+
+  /* ===== CONFIRMATION DIALOGS ===== */
+  .dialog-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none;
+    align-items: center; justify-content: center; z-index: 1001;
+  }
+  .dialog-overlay.active { display: flex; }
+  .dialog-content {
+    background: #fff; padding: 24px; border-radius: 16px; max-width: 300px;
+    text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+  }
+  .dialog-title { font-size: 16px; font-weight: 700; margin-bottom: 12px; }
+  .dialog-text { font-size: 14px; color: #666; margin-bottom: 20px; }
+  .dialog-buttons { display: flex; gap: 8px; }
+  .dialog-btn {
+    flex: 1; padding: 10px; border-radius: 8px; border: none; font-weight: 600;
+    cursor: pointer; font-family: inherit; font-size: 14px;
+  }
+  .dialog-cancel { background: #f0f0f0; color: #0f172a; }
+  .dialog-cancel:active { background: #e5e5e5; }
+  .dialog-confirm { background: var(--green-600); color: #fff; }
+  .dialog-confirm:active { background: var(--green-700); }
+  .dialog-emergency { background: #ef4444; color: #fff; }
+  .dialog-emergency:active { background: #dc2626; }
+
+  /* Share info section */
+  .share-info {
+    background: var(--green-50); padding: 12px; border-radius: 8px; margin-bottom: 12px;
+    font-size: 13px;
+  }
+  .share-row { display: flex; justify-content: space-between; padding: 6px 0; }
+  .share-label { color: #666; }
+  .share-value { font-weight: 600; }
+  .share-copy-btn {
+    width: 100%; padding: 10px; background: var(--green-600); color: #fff;
+    border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-family: inherit;
+    font-size: 13px; margin-top: 8px;
+  }
+  .share-copy-btn:active { background: var(--green-700); }
+
+  /* Planned ride creation form */
+  .ride-form-group { margin-bottom: 16px; }
+  .ride-form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  .ride-form-group input, .ride-form-group select {
+    width: 100%; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 8px;
+    font-family: inherit; font-size: 14px;
+  }
+  .ride-form-group input:focus, .ride-form-group select:focus { outline: none; border-color: var(--green-600); }
+  .ride-recurring { margin-top: 16px; padding-top: 16px; border-top: 1px solid #e5e7eb; }
+  .recurring-toggle {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+  }
+  .toggle-input { width: 36px; height: 20px; border: 2px solid #e5e7eb; border-radius: 10px;
+    background: #fff; position: relative; cursor: pointer; transition: all 0.2s;
+  }
+  .toggle-input.active { background: var(--green-600); border-color: var(--green-600); }
+  .toggle-slider { position: absolute; width: 16px; height: 16px; background: #fff;
+    border-radius: 50%; top: 1px; left: 1px; transition: left 0.2s;
+  }
+  .toggle-input.active .toggle-slider { left: 17px; }
+  .day-buttons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .day-btn { padding: 8px; background: var(--green-50); border: 1px solid #e5e7eb;
+    border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit;
+  }
+  .day-btn.active { background: var(--green-600); color: #fff; border-color: var(--green-600); }
+  .ride-create-btn {
+    width: 100%; padding: 12px; background: var(--green-600); color: #fff;
+    border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-family: inherit;
+    font-size: 14px;
+  }
+  .ride-create-btn:active { background: var(--green-700); }
+</style>
+</head>
+<body>
+
+<!-- ===== LOGIN ===== -->
+<div class="screen" id="login">
+  <div class="login-container">
+    <div class="login-logo">🍃</div>
+    <div class="login-title">Huckepack</div>
+    <div class="login-sub">Mitfahren. Sparen. Nachhaltigkeit.</div>
+
+    <!-- Login form -->
+    <div id="login-form" class="login-form">
+      <button class="login-btn login-google" onclick="proceedFromLogin('google')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+        </svg>
+        Mit Google anmelden
+      </button>
+      <div class="login-divider">oder</div>
+      <input type="email" class="login-input" placeholder="Email-Adresse" id="login-email">
+      <input type="password" class="login-input" placeholder="Passwort" id="login-password">
+      <button class="login-submit" onclick="proceedFromLogin('email')">Anmelden</button>
+    </div>
+
+    <!-- Registration form -->
+    <div id="register-form" class="login-form hidden">
+      <input type="text" class="login-input" placeholder="Name" id="register-name">
+      <input type="email" class="login-input" placeholder="Email-Adresse" id="register-email">
+      <input type="password" class="login-input" placeholder="Passwort" id="register-password">
+      <button class="login-submit" onclick="proceedFromLogin('register')">Registrieren</button>
+    </div>
+
+    <button class="login-toggle-form" onclick="toggleLoginForm()">
+      <span id="toggle-text">Noch kein Konto? Registrieren</span>
+    </button>
+  </div>
+</div>
+
+<!-- ===== SPLASH ===== -->
+<div class="screen" id="splash">
+  <div class="splash-logo">🍃</div>
+  <div class="splash-title">Huckepack</div>
+  <div class="splash-sub">Mitfahren. Sparen. Nachhaltigkeit.</div>
+  <div class="splash-badge">🌿 Jede Fahrt zählt für unseren Planeten</div>
+  <button class="btn-primary" onclick="goToOnboarding()">Los geht's</button>
+</div>
+
+<!-- ===== ONBOARDING ===== -->
+<div class="screen" id="onboarding">
+  <div class="onboarding-container">
+    <div class="onboarding-content">
+      <div class="onboarding-slide active" data-slide="0">
+        <div class="icon">🚗</div>
+        <h2>Mitfahren</h2>
+        <p>Teile Deine Fahrt und spare Geld.<br>Schnell, spontan, einfach.</p>
+      </div>
+      <div class="onboarding-slide" data-slide="1">
+        <div class="icon">💚</div>
+        <h2>Sparen</h2>
+        <p>Fahrtkosten teilen statt allein zahlen.<br>Bis zu 50% günstiger als Taxi.</p>
+      </div>
+      <div class="onboarding-slide" data-slide="2">
+        <div class="icon">🌍</div>
+        <h2>Nachhaltigkeit</h2>
+        <p>Weniger Autos auf der Straße.<br>Zusammen für eine grünere Zukunft.</p>
+      </div>
+      <div class="onboarding-slide" data-slide="3">
+        <h2>Willkommen!</h2>
+        <div class="onboarding-form" style="margin-top:20px;">
+          <div class="form-group">
+            <label>Wie heißt du?</label>
+            <input type="text" id="onb-name" placeholder="z.B. Paul" value="Paul">
+          </div>
+          <div class="form-group">
+            <label>Wie möchtest du Huckepack nutzen?</label>
+            <div class="mode-buttons">
+              <button class="mode-btn active" onclick="setOnbMode('walker')">🚶 Mitfahrer</button>
+              <button class="mode-btn" onclick="setOnbMode('driver')">🚗 Fahrer</button>
+              <button class="mode-btn" onclick="setOnbMode('both')">🔄 Beides</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="onboarding-slide" data-slide="4">
+        <h2>Dein Auto</h2>
+        <div class="onboarding-form" style="margin-top:20px;">
+          <div class="car-inputs">
+            <div class="form-group">
+              <label>Marke</label>
+              <input type="text" id="onb-car-brand" placeholder="z.B. BMW" value="BMW">
+            </div>
+            <div class="form-group">
+              <label>Modell</label>
+              <input type="text" id="onb-car-model" placeholder="z.B. 3er" value="3er">
+            </div>
+            <div class="form-group">
+              <label>Farbe</label>
+              <input type="text" id="onb-car-color" placeholder="z.B. weiß" value="weiß">
+            </div>
+            <div class="form-group">
+              <label>Kennzeichen</label>
+              <input type="text" id="onb-car-plate" placeholder="z.B. M-PH 2026" value="M-PH 2026">
+            </div>
+            <div class="form-group">
+              <label>Baujahr</label>
+              <input type="text" id="onb-car-year" placeholder="z.B. 2022" value="2022">
+            </div>
+            <div class="form-group">
+              <label>Sitzplätze</label>
+              <select id="onb-car-seats">
+                <option>3</option>
+                <option selected>4</option>
+                <option>5</option>
+                <option>6</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="onboarding-dots">
+      <div class="dot active" onclick="goToSlide(0)"></div>
+      <div class="dot" onclick="goToSlide(1)"></div>
+      <div class="dot" onclick="goToSlide(2)"></div>
+      <div class="dot" onclick="goToSlide(3)"></div>
+      <div class="dot" onclick="goToSlide(4)"></div>
+    </div>
+
+    <div class="onboarding-footer">
+      <button class="onboarding-skip" onclick="skipOnboarding()">Überspringen</button>
+      <button class="onboarding-next" onclick="nextSlide()">Weiter →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== HOME ===== -->
+<div class="screen" id="home">
+  <div class="home-header">
+    <div>
+      <div class="greeting">Hallo, <span id="user-greeting-name">Paul</span> 👋</div>
+    </div>
+    <div class="avatar" id="home-avatar" onclick="showScreen('profile-screen')">P</div>
+  </div>
+
+  <!-- Mode Selection -->
+  <div class="mode-cards">
+    <div class="mode-card active" id="mode-walker" onclick="setMode('walker')">
+      <div class="mode-card-icon">🚶</div>
+      <div class="mode-card-text">Mitfahrer</div>
+    </div>
+    <div class="mode-card" id="mode-driver" onclick="setMode('driver')">
+      <div class="mode-card-icon">🚗</div>
+      <div class="mode-card-text">Fahrer</div>
+    </div>
+  </div>
+
+  <!-- Planned Rides Section -->
+  <div class="planned-rides-section">
+    <div class="section-title">Geplante Fahrten</div>
+    <button class="planned-ride-btn" onclick="openPlannedRideModal()">Fahrt planen</button>
+    <div class="planned-rides-list" id="planned-rides-list">
+      <div class="planned-ride-card">
+        <div class="ride-time">Mo, 8. Apr • 08:30</div>
+        <div class="ride-route">Schwabing → Marienplatz</div>
+        <div class="ride-meta">2 Sitzplätze frei</div>
+      </div>
+      <div class="planned-ride-card">
+        <div class="ride-time">Mi, 10. Apr • 18:00</div>
+        <div class="ride-route">Hauptbahnhof → Flughafen</div>
+        <div class="ride-meta">3 Sitzplätze frei</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="height: 100px;"></div>
+</div>
+
+<!-- ===== MAP SCREEN ===== -->
+<div class="screen" id="map-screen">
+  <div style="display: flex; flex-direction: column; flex: 1; position: relative;">
+    <div class="map-header">
+      <button class="back-btn" onclick="showScreen('home')">‹</button>
+      <div class="search-input-wrapper" style="position: relative;">
+        <input type="text" class="search-input" id="map-dest" placeholder="Ziel eingeben...">
+        <div class="geocoding-dropdown" id="map-dest-dropdown"></div>
+      </div>
+    </div>
+    <div id="map"></div>
+  </div>
+
+  <div style="position: absolute; bottom: 20px; left: 20px; right: 20px; z-index: 10;">
+    <button class="btn-primary" onclick="startSearch()" style="max-width: none;">Fahrt suchen</button>
+  </div>
+</div>
+
+<!-- ===== CHAT SCREEN ===== -->
+<div class="screen" id="chat-screen">
+  <div class="chat-header">
+    <button class="back-btn" onclick="showScreen('home')" style="position: absolute; left: 16px;">‹</button>
+    <div style="text-align: center; flex: 1; margin-left: -36px;">
+      <div class="chat-title" id="chat-driver-name">Marco</div>
+      <div class="chat-subtitle">VW Golf, schwarz</div>
+    </div>
+  </div>
+  <div class="chat-messages" id="chat-messages"></div>
+  <div class="chat-input">
+    <button class="chat-btn" onclick="shareLocation()" title="Standort teilen">📍</button>
+    <input type="text" id="chat-input-field" placeholder="Nachricht..." onkeypress="if(event.key==='Enter') sendMsg()">
+    <button class="chat-btn" onclick="sendMsg()">→</button>
+  </div>
+</div>
+
+<!-- ===== RATING SCREEN ===== -->
+<div class="screen" id="rating-screen">
+  <div class="rating-content">
+    <div class="rating-title">Wie war die Fahrt?</div>
+    <div class="rating-subtitle" id="rating-driver-name">Mit Marco</div>
+
+    <div class="stars" id="star-rating">
+      <span class="star" onclick="setRating(1)">⭐</span>
+      <span class="star" onclick="setRating(2)">⭐</span>
+      <span class="star" onclick="setRating(3)">⭐</span>
+      <span class="star" onclick="setRating(4)">⭐</span>
+      <span class="star" onclick="setRating(5)">⭐</span>
+    </div>
+
+    <div class="rating-tags">
+      <button class="tag-btn" onclick="toggleTag(this, 'punctual')">Pünktlich</button>
+      <button class="tag-btn" onclick="toggleTag(this, 'friendly')">Freundlich</button>
+      <button class="tag-btn" onclick="toggleTag(this, 'clean')">Sauberes Auto</button>
+      <button class="tag-btn" onclick="toggleTag(this, 'entertaining')">Gute Unterhaltung</button>
+      <button class="tag-btn" onclick="toggleTag(this, 'quiet')">Leise Fahrt</button>
+    </div>
+
+    <div class="comment-section">
+      <div class="comment-label">Kommentar (optional)</div>
+      <textarea class="comment-textarea" id="rating-comment" placeholder="Deine Gedanken zur Fahrt..." maxlength="200" oninput="updateCharCounter()"></textarea>
+      <div class="char-counter"><span id="char-count">0</span>/200</div>
+    </div>
+
+    <button class="rating-btn" onclick="submitRating()">Bewertung absenden</button>
+  </div>
+</div>
+
+<!-- ===== DRIVER SCREEN ===== -->
+<div class="screen" id="driver-screen">
+  <div class="drv-header">
+    <div>
+      <div class="drv-title">Fahrer-Modus</div>
+      <div class="drv-status">Bereit für Fahrten</div>
+    </div>
+    <div class="avatar" onclick="showScreen('profile-screen')" style="cursor: pointer;">P</div>
+  </div>
+
+  <div class="drv-car-section">
+    <div class="drv-car-card">
+      <div class="drv-car-emoji" id="drv-car-emoji">🚙</div>
+      <div class="drv-car-title" id="drv-car-title">BMW 3er, weiß</div>
+      <div class="drv-car-info" id="drv-car-info">Baujahr 2022 • 4 Sitzplätze</div>
+      <div class="drv-car-plate" id="drv-car-plate">M-PH 2026</div>
+    </div>
+
+    <div class="drv-control-btns">
+      <button class="drv-btn drv-online" onclick="setOnlineStatus(true)">🟢 Online</button>
+      <button class="drv-btn drv-offline" onclick="setOnlineStatus(false)">⚪ Offline</button>
+    </div>
+  </div>
+
+  <div style="height: 100px;"></div>
+</div>
+
+<!-- Tracking Panel (shown when ride is active) -->
+<div class="drv-tracking-panel" id="drv-tracking-panel">
+  <div class="drv-tracking-info">
+    <div class="drv-tracking-rider">→ <span id="tracking-rider-name">Lisa</span></div>
+    <div class="drv-tracking-dest" id="tracking-destination">Marienplatz • 5 min</div>
+  </div>
+  <div class="drv-action-btns">
+    <button class="drv-action-btn" onclick="shareRide()">📤 Fahrt teilen</button>
+    <button class="drv-action-btn" onclick="completeRide()">✓ Fahrt beenden</button>
+  </div>
+  <button class="drv-sos-btn" id="sos-btn" onclick="showSOSDialog()">SOS</button>
+</div>
+
+<!-- ===== PROFILE SCREEN ===== -->
+<div class="screen" id="profile-screen">
+  <div class="profile-header">
+    <button class="back-btn" onclick="showScreen('home')" style="position: absolute; left: 16px;">‹</button>
+    <div style="flex: 1;">
+      <div class="profile-avatar" id="profile-avatar">P</div>
+      <div class="profile-name" id="profile-name">Paul</div>
+    </div>
+  </div>
+
+  <div class="profile-stats">
+    <div class="stat-item">
+      <div class="stat-value" id="stat-trips">12</div>
+      <div class="stat-label">Fahrten</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value" id="stat-rating">4.9 ⭐</div>
+      <div class="stat-label">Rating</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value" id="stat-co2">4.2 kg</div>
+      <div class="stat-label">CO₂ gespart</div>
+    </div>
+  </div>
+
+  <div class="profile-sections">
+    <div class="profile-section">
+      <div class="profile-section-item">
+        <span class="profile-section-item-icon">💳</span>
+        <div class="profile-section-item-text">
+          <div class="profile-section-item-label">Zahlungsmethode</div>
+          <div class="profile-section-item-value">Stripe</div>
+        </div>
+        <span class="profile-section-item-arrow">›</span>
+      </div>
+      <div class="profile-section-item">
+        <span class="profile-section-item-icon">🔔</span>
+        <div class="profile-section-item-text">
+          <div class="profile-section-item-label">Benachrichtigungen</div>
+          <div class="profile-section-item-value">Aktiviert</div>
+        </div>
+        <span class="profile-section-item-arrow">›</span>
+      </div>
+    </div>
+    <div class="profile-section">
+      <div class="profile-section-item">
+        <span class="profile-section-item-icon">ℹ️</span>
+        <span class="profile-section-item-text">
+          <div class="profile-section-item-label">Über Huckepack</div>
+        </span>
+        <span class="profile-section-item-arrow">›</span>
+      </div>
+      <div class="profile-section-item">
+        <span class="profile-section-item-icon">🔒</span>
+        <span class="profile-section-item-text">
+          <div class="profile-section-item-label">Datenschutz</div>
+        </span>
+        <span class="profile-section-item-arrow">›</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== DRIVER MATCH OVERLAY ===== -->
+<div class="drv-match-overlay" id="drv-match-overlay">
+  <div class="drv-match-card">
+    <div style="font-size:40px;">🌱</div>
+    <h3>Mitfahrer gefunden!</h3>
+    <div class="route"><strong id="drv-match-rider-name">Lisa</strong> möchte von Schwabing zum Marienplatz<br>Umweg: +200m • Verdienst: <strong id="drv-match-earnings">0,76 €</strong></div>
+    <div class="drv-match-btns">
+      <button class="btn-decline" onclick="declineDriverMatch()">Ablehnen</button>
+      <button class="btn-accept" onclick="acceptDriverMatch()">Annehmen</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODALS ===== -->
+<!-- Planned Ride Modal -->
+<div class="modal-overlay" id="planned-ride-modal">
+  <div class="modal-content">
+    <button class="modal-close" onclick="closePlannedRideModal()">×</button>
+    <div class="modal-header">Fahrt planen</div>
+
+    <div class="ride-form-group">
+      <label>Startpunkt</label>
+      <input type="text" id="ride-start" placeholder="z.B. Schwabing">
+    </div>
+
+    <div class="ride-form-group">
+      <label>Ziel</label>
+      <input type="text" id="ride-dest" placeholder="z.B. Marienplatz">
+    </div>
+
+    <div class="ride-form-group">
+      <label>Datum</label>
+      <input type="date" id="ride-date">
+    </div>
+
+    <div class="ride-form-group">
+      <label>Uhrzeit</label>
+      <input type="time" id="ride-time">
+    </div>
+
+    <div class="ride-form-group">
+      <label>Sitzplätze</label>
+      <select id="ride-seats">
+        <option>1</option>
+        <option>2</option>
+        <option selected>3</option>
+        <option>4</option>
+      </select>
+    </div>
+
+    <div class="ride-recurring">
+      <div class="recurring-toggle">
+        <label style="flex: 1; font-weight: 600; font-size: 14px;">Wiederkehrend</label>
+        <div class="toggle-input" id="recurring-toggle" onclick="toggleRecurring()">
+          <div class="toggle-slider"></div>
+        </div>
+      </div>
+      <div id="day-select" style="display: none;">
+        <label style="font-size: 13px; font-weight: 600; margin-bottom: 8px; display: block;">Wiederholung</label>
+        <div class="day-buttons">
+          <button class="day-btn" onclick="toggleDay(this, 'mo')">Mo</button>
+          <button class="day-btn" onclick="toggleDay(this, 'di')">Di</button>
+          <button class="day-btn" onclick="toggleDay(this, 'mi')">Mi</button>
+          <button class="day-btn" onclick="toggleDay(this, 'do')">Do</button>
+          <button class="day-btn" onclick="toggleDay(this, 'fr')">Fr</button>
+          <button class="day-btn" onclick="toggleDay(this, 'sa')">Sa</button>
+          <button class="day-btn" onclick="toggleDay(this, 'so')">So</button>
+        </div>
+      </div>
+    </div>
+
+    <button class="ride-create-btn" onclick="createPlannedRide()">Fahrt erstellen</button>
+  </div>
+</div>
+
+<!-- Share Ride Modal -->
+<div class="modal-overlay" id="share-ride-modal">
+  <div class="modal-content">
+    <button class="modal-close" onclick="closeShareRideModal()">×</button>
+    <div class="modal-header">Fahrt teilen</div>
+
+    <div class="share-info">
+      <div class="share-row">
+        <span class="share-label">Fahrer:</span>
+        <span class="share-value" id="share-driver-name">Paul</span>
+      </div>
+      <div class="share-row">
+        <span class="share-label">Auto:</span>
+        <span class="share-value" id="share-car-info">BMW 3er, weiß</span>
+      </div>
+      <div class="share-row">
+        <span class="share-label">Kennzeichen:</span>
+        <span class="share-value" id="share-license-plate">M-PH 2026</span>
+      </div>
+      <div class="share-row">
+        <span class="share-label">Ankunft:</span>
+        <span class="share-value" id="share-eta">5 min</span>
+      </div>
+    </div>
+
+    <button class="share-copy-btn" onclick="copyShareLink()">Link kopieren</button>
+  </div>
+</div>
+
+<!-- Dialog Overlays -->
+<div class="dialog-overlay" id="sos-dialog">
+  <div class="dialog-content">
+    <div class="dialog-title">🚨 Notfall melden?</div>
+    <div class="dialog-text">Was möchtest du tun?</div>
+    <div class="dialog-buttons" style="flex-direction: column; gap: 10px;">
+      <button class="dialog-btn dialog-emergency" onclick="callEmergency()">Notruf 112</button>
+      <button class="dialog-btn dialog-confirm" onclick="sendLocationToContact()">Standort an Kontakt senden</button>
+      <button class="dialog-btn dialog-cancel" onclick="closeDialog('sos-dialog')">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bottom Navigation -->
+<div class="bottom-nav">
+  <button class="nav-btn active" onclick="showScreen('home')">🏠</button>
+  <button class="nav-btn" onclick="showScreen('map-screen')">🗺️</button>
+  <button class="nav-btn" onclick="showScreen('driver-screen')">🚗</button>
+  <button class="nav-btn" onclick="showScreen('profile-screen')">👤</button>
+</div>
+
+<script>
+// ===== FIREBASE CONFIG (placeholder) =====
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+
+let db = null;
+let auth = null;
+
+// Only initialize Firebase if config is properly set
+if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
+  try {
+    firebase.initializeApp(firebaseConfig);
+    auth = firebase.auth();
+    db = firebase.firestore();
+  } catch (e) {
+    console.log("Firebase not configured yet");
+  }
+}
+
+// Auth state
+window.authState = {
+  isLoggedIn: false,
+  user: null,
+  method: null // 'google', 'email', 'register'
+};
+
+// ===== APP STATE & USER DATA =====
+let map, userMarker, driverMarker, destMarker, routeLine;
+let userPos = { lat: 48.1351, lng: 11.5820 }; // München
+let appMode = 'walker';
+let currentScreen = 'login';
+let currentOnboardingSlide = 0;
+let lastGeocodingInput = '';
+let geocodingDebounceTimer = null;
+let currentRating = 0;
+let selectedTags = [];
+let isOnlineDriver = false;
+let rideInProgress = false;
+
+// In-memory user data
+let userData = {
+  name: 'Paul',
+  mode: 'walker',
+  trips: 12,
+  co2Saved: 4.2,
+  rating: 4.9,
+  rideHistory: [],
+  plannedRides: [],
+  car: {
+    brand: 'BMW',
+    model: '3er',
+    color: 'weiß',
+    plate: 'M-PH 2026',
+    year: 2022,
+    seats: 4
+  }
+};
+
+const drivers = [
+  { name: 'Marco', initial: 'M', rating: 4.8, trips: 127, car: 'VW Golf, schwarz', plate: 'M-AB 1234', color: '#22c55e' },
+  { name: 'Sarah', initial: 'S', rating: 4.9, trips: 89, car: 'Toyota Yaris, blau', plate: 'M-SK 7891', color: '#14b8a6' },
+  { name: 'Tom', initial: 'T', rating: 4.7, trips: 203, car: 'Opel Corsa, rot', plate: 'M-TW 4562', color: '#f59e0b' },
+];
+
+// ===== LOGIN FUNCTIONS =====
+function toggleLoginForm() {
+  const loginForm = document.getElementById('login-form');
+  const registerForm = document.getElementById('register-form');
+  const toggleText = document.getElementById('toggle-text');
+
+  if (loginForm.classList.contains('hidden')) {
+    loginForm.classList.remove('hidden');
+    registerForm.classList.add('hidden');
+    toggleText.textContent = 'Noch kein Konto? Registrieren';
+  } else {
+    loginForm.classList.add('hidden');
+    registerForm.classList.remove('hidden');
+    toggleText.textContent = 'Bereits registriert? Anmelden';
+  }
+}
+
+function proceedFromLogin(method) {
+  window.authState.isLoggedIn = true;
+  window.authState.method = method;
+
+  if (method === 'register') {
+    const name = document.getElementById('register-name').value || 'Nutzer';
+    userData.name = name;
+  }
+
+  // Show splash briefly, then onboarding
+  showScreen('splash');
+  setTimeout(() => {
+    goToOnboarding();
+  }, 1500);
+}
+
+// ===== ONBOARDING =====
+function goToOnboarding() {
+  showScreen('onboarding');
+  updateOnboardingUI();
+}
+
+function goToSlide(n) {
+  currentOnboardingSlide = n;
+  updateOnboardingUI();
+}
+
+function nextSlide() {
+  if (currentOnboardingSlide < 4) {
+    currentOnboardingSlide++;
+    updateOnboardingUI();
+  } else {
+    completeOnboarding();
+  }
+}
+
+function updateOnboardingUI() {
+  document.querySelectorAll('.onboarding-slide').forEach((slide, i) => {
+    slide.classList.toggle('active', i === currentOnboardingSlide);
+  });
+  document.querySelectorAll('.dot').forEach((dot, i) => {
+    dot.classList.toggle('active', i === currentOnboardingSlide);
+  });
+}
+
+function setOnbMode(mode) {
+  userData.mode = mode;
+  document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+function skipOnboarding() {
+  completeOnboarding();
+}
+
+function completeOnboarding() {
+  userData.name = document.getElementById('onb-name').value || 'Paul';
+  userData.car.brand = document.getElementById('onb-car-brand').value || 'BMW';
+  userData.car.model = document.getElementById('onb-car-model').value || '3er';
+  userData.car.color = document.getElementById('onb-car-color').value || 'weiß';
+  userData.car.plate = document.getElementById('onb-car-plate').value || 'M-PH 2026';
+  userData.car.year = parseInt(document.getElementById('onb-car-year').value) || 2022;
+  userData.car.seats = parseInt(document.getElementById('onb-car-seats').value) || 4;
+
+  updateUIWithUserData();
+  showScreen('home');
+}
+
+function updateUIWithUserData() {
+  const initial = userData.name.charAt(0).toUpperCase();
+  document.getElementById('user-greeting-name').textContent = userData.name;
+  document.getElementById('home-avatar').textContent = initial;
+  document.getElementById('profile-avatar').textContent = initial;
+  document.getElementById('profile-name').textContent = userData.name;
+  document.getElementById('profile-trips').textContent = userData.trips;
+  document.getElementById('profile-rating').textContent = userData.rating;
+  document.getElementById('stat-trips').textContent = userData.trips;
+  document.getElementById('stat-rating').textContent = userData.rating + ' ⭐';
+  document.getElementById('stat-co2').textContent = userData.co2Saved.toFixed(1) + ' kg';
+
+  const carEmoji = { 'BMW': '🚙', 'VW': '🚗', 'Toyota': '🚕', 'Opel': '🚙' }[userData.car.brand] || '🚗';
+  document.getElementById('drv-car-emoji').textContent = carEmoji;
+  document.getElementById('drv-car-title').textContent = userData.car.brand + ' ' + userData.car.model + ', ' + userData.car.color;
+  document.getElementById('drv-car-info').textContent = 'Baujahr ' + userData.car.year + ' • ' + userData.car.seats + ' Sitzplätze';
+  document.getElementById('drv-car-plate').textContent = userData.car.plate;
+
+  // Update share ride info
+  document.getElementById('share-driver-name').textContent = userData.name;
+  document.getElementById('share-car-info').textContent = userData.car.brand + ' ' + userData.car.model + ', ' + userData.car.color;
+  document.getElementById('share-license-plate').textContent = userData.car.plate;
+}
+
+// ===== SCREEN NAV =====
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  currentScreen = id;
+
+  if (id === 'map-screen' && !map) initMap();
+  if (id === 'map-screen' && map) {
+    setTimeout(() => map.invalidateSize(), 100);
+  }
+
+  if (id === 'home') {
+    document.querySelectorAll('.nav-btn').forEach((btn, i) => btn.classList.toggle('active', i === 0));
+  }
+}
+
+function initApp() {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      pos => { userPos = { lat: pos.coords.latitude, lng: pos.coords.longitude }; },
+      () => {},
+      { enableHighAccuracy: true }
+    );
+  }
+  showScreen('login');
+}
+
+// ===== MODE =====
+function setMode(mode) {
+  appMode = mode;
+  document.getElementById('mode-walker').classList.toggle('active', mode === 'walker');
+  document.getElementById('mode-driver').classList.toggle('active', mode === 'driver');
+  if (mode === 'driver') {
+    setTimeout(() => showScreen('driver-screen'), 200);
+  } else {
+    showScreen('map-screen');
+  }
+}
+
+function setOnlineStatus(online) {
+  isOnlineDriver = online;
+  if (online) {
+    document.querySelector('.drv-online').style.opacity = '1';
+    document.querySelector('.drv-offline').style.opacity = '0.7';
+    // Simulate a match after 3 seconds
+    setTimeout(() => {
+      if (isOnlineDriver) {
+        simulateDriverMatch();
+      }
+    }, 3000);
+  } else {
+    document.querySelector('.drv-online').style.opacity = '0.7';
+    document.querySelector('.drv-offline').style.opacity = '1';
+  }
+}
+
+// ===== MAP =====
+function initMap() {
+  map = L.map('map', { zoomControl: false }).setView([userPos.lat, userPos.lng], 15);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap'
+  }).addTo(map);
+
+  const userIcon = L.divIcon({
+    html: '<div style="width:18px;height:18px;background:#16a34a;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(22,163,74,0.5);"></div>',
+    iconSize: [18, 18], className: ''
+  });
+  userMarker = L.marker([userPos.lat, userPos.lng], { icon: userIcon }).addTo(map);
+
+  if (navigator.geolocation) {
+    navigator.geolocation.watchPosition(pos => {
+      userPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      userMarker.setLatLng([userPos.lat, userPos.lng]);
+    }, () => {}, { enableHighAccuracy: true });
+  }
+}
+
+// ===== GEOCODING =====
+function performGeocoding(query, dropdownId) {
+  if (!query || query.length < 2) {
+    document.getElementById(dropdownId).classList.remove('visible');
+    return;
+  }
+
+  fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&countrycodes=de`, {
+    headers: { 'User-Agent': 'Huckepack/1.0' }
+  })
+    .then(r => r.json())
+    .then(results => {
+      const dropdown = document.getElementById(dropdownId);
+      dropdown.innerHTML = '';
+      results.forEach(r => {
+        const item = document.createElement('div');
+        item.className = 'geocoding-item';
+        item.textContent = r.display_name.split(',')[0];
+        item.onclick = () => selectGeocodingResult(parseFloat(r.lat), parseFloat(r.lon), r.display_name.split(',')[0], dropdownId);
+        dropdown.appendChild(item);
+      });
+      dropdown.classList.add('visible');
+    })
+    .catch(err => console.log('Geocoding error:', err));
+}
+
+function selectGeocodingResult(lat, lon, name, dropdownId) {
+  const inputId = dropdownId.replace('-dropdown', '');
+  document.getElementById(inputId).value = name;
+  document.getElementById(dropdownId).classList.remove('visible');
+
+  if (inputId === 'map-dest') {
+    destPos = { lat, lng: lon };
+  }
+}
+
+// ===== SEARCH =====
+function startSearch() {
+  const dest = document.getElementById('map-dest').value;
+  if (!dest || !destPos) {
+    alert('Bitte ein Ziel eingeben');
+    return;
+  }
+
+  fetchRoute(userPos.lat, userPos.lng, destPos.lat, destPos.lng, () => {
+    setTimeout(() => {
+      simulateMatch(destPos);
+    }, 1500);
+  });
+}
+
+function fetchRoute(lat1, lon1, lat2, lon2, callback) {
+  fetch(`https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?geometries=geojson`)
+    .then(r => r.json())
+    .then(data => {
+      if (data.routes && data.routes[0]) {
+        const route = data.routes[0];
+        const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
+
+        if (routeLine) map.removeLayer(routeLine);
+        routeLine = L.polyline(coords, { color: '#16a34a', weight: 3, opacity: 0.7 }).addTo(map);
+
+        if (destMarker) map.removeLayer(destMarker);
+        destMarker = L.marker([lat2, lon2], {
+          icon: L.divIcon({
+            html: '<div style="width:20px;height:20px;background:#ef4444;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(239,68,68,0.5);"></div>',
+            iconSize: [20, 20], className: ''
+          })
+        }).addTo(map);
+
+        map.fitBounds([userMarker.getLatLng(), destMarker.getLatLng()]);
+        if (callback) callback(route);
+      }
+    });
+}
+
+function haversineDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function simulateMatch(destPos) {
+  const driver = drivers[Math.floor(Math.random() * drivers.length)];
+  document.getElementById('chat-driver-name').textContent = driver.name;
+  document.getElementById('rating-driver-name').textContent = 'Mit ' + driver.name;
+
+  showScreen('chat-screen');
+  addChatMsg('Hallo! Ich bin ' + driver.name + ' und fahre jetzt zu dir!', 'received');
+}
+
+function simulateDriverMatch() {
+  const riders = [
+    { name: 'Lisa', location: 'Schwabing', destination: 'Marienplatz', earnings: '0,76 €' },
+    { name: 'Anna', location: 'Sendling', destination: 'Marienplatz', earnings: '0,54 €' },
+  ];
+  const match = riders[Math.floor(Math.random() * riders.length)];
+
+  document.getElementById('drv-match-rider-name').textContent = match.name;
+  document.getElementById('drv-match-earnings').textContent = match.earnings;
+  document.getElementById('drv-match-overlay').classList.add('active');
+}
+
+function acceptDriverMatch() {
+  document.getElementById('drv-match-overlay').classList.remove('active');
+  const rider = document.getElementById('drv-match-rider-name').textContent;
+  document.getElementById('tracking-rider-name').textContent = rider;
+  document.getElementById('drv-tracking-panel').classList.add('active');
+  document.getElementById('sos-btn').classList.add('active');
+  rideInProgress = true;
+}
+
+function declineDriverMatch() {
+  document.getElementById('drv-match-overlay').classList.remove('active');
+}
+
+function completeRide() {
+  rideInProgress = false;
+  document.getElementById('drv-tracking-panel').classList.remove('active');
+  document.getElementById('sos-btn').classList.remove('active');
+  userData.trips++;
+  userData.co2Saved += 1.2;
+  updateUIWithUserData();
+}
+
+// ===== CHAT =====
+function sendMsg() {
+  const input = document.getElementById('chat-input-field');
+  const text = input.value.trim();
+  if (!text) return;
+
+  addChatMsg(text, 'sent');
+  input.value = '';
+
+  setTimeout(() => {
+    addChatMsg('Alles klar! Bin gleich da!', 'received');
+  }, 500);
+}
+
+function shareLocation() {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      const lat = pos.coords.latitude.toFixed(4);
+      const lon = pos.coords.longitude.toFixed(4);
+      addChatMsg(`📍 Mein Standort: ${lat}, ${lon}`, 'sent');
+
+      setTimeout(() => {
+        addChatMsg(`Auf Karte anzeigen`, 'location');
+      }, 300);
+    });
+  }
+}
+
+function addChatMsg(text, type) {
+  const container = document.getElementById('chat-messages');
+  const msg = document.createElement('div');
+
+  if (type === 'location') {
+    msg.className = 'location-card';
+    msg.innerHTML = `
+      <div class="location-badge">📍 Standort geteilt</div>
+      <div class="location-coords">48.1351, 11.5820</div>
+      <a href="#" class="location-link">Auf Karte anzeigen</a>
+    `;
+  } else {
+    msg.className = 'msg ' + type;
+    msg.textContent = text;
+  }
+
+  container.appendChild(msg);
+  container.scrollTop = container.scrollHeight;
+}
+
+// ===== RATING =====
+function setRating(stars) {
+  currentRating = stars;
+  document.querySelectorAll('#star-rating .star').forEach((star, i) => {
+    star.classList.toggle('active', i < stars);
+  });
+}
+
+function toggleTag(btn, tag) {
+  btn.classList.toggle('active');
+  const idx = selectedTags.indexOf(tag);
+  if (idx > -1) {
+    selectedTags.splice(idx, 1);
+  } else {
+    selectedTags.push(tag);
+  }
+}
+
+function updateCharCounter() {
+  const textarea = document.getElementById('rating-comment');
+  document.getElementById('char-count').textContent = textarea.value.length;
+}
+
+function submitRating() {
+  const comment = document.getElementById('rating-comment').value;
+  console.log('Rating submitted:', { stars: currentRating, tags: selectedTags, comment });
+  currentRating = 0;
+  selectedTags = [];
+  document.getElementById('rating-comment').value = '';
+  document.getElementById('char-count').textContent = '0';
+  document.querySelectorAll('#star-rating .star').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('active'));
+  showScreen('home');
+}
+
+// ===== PLANNED RIDES =====
+function openPlannedRideModal() {
+  document.getElementById('planned-ride-modal').classList.add('active');
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('ride-date').value = today;
+}
+
+function closePlannedRideModal() {
+  document.getElementById('planned-ride-modal').classList.remove('active');
+}
+
+function toggleRecurring() {
+  const toggle = document.getElementById('recurring-toggle');
+  const daySelect = document.getElementById('day-select');
+  toggle.classList.toggle('active');
+  daySelect.style.display = toggle.classList.contains('active') ? 'block' : 'none';
+}
+
+function toggleDay(btn, day) {
+  btn.classList.toggle('active');
+}
+
+function createPlannedRide() {
+  const start = document.getElementById('ride-start').value;
+  const dest = document.getElementById('ride-dest').value;
+  const date = document.getElementById('ride-date').value;
+  const time = document.getElementById('ride-time').value;
+  const seats = document.getElementById('ride-seats').value;
+
+  if (!start || !dest || !date || !time) {
+    alert('Bitte alle Felder ausfüllen');
+    return;
+  }
+
+  const ride = {
+    start,
+    destination: dest,
+    date,
+    time,
+    seats,
+    recurring: document.getElementById('recurring-toggle').classList.contains('active')
+  };
+
+  userData.plannedRides.push(ride);
+  console.log('Planned ride created:', ride);
+
+  closePlannedRideModal();
+  alert('Fahrt geplant!');
+}
+
+// ===== DRIVER ACTIONS =====
+function shareRide() {
+  document.getElementById('share-ride-modal').classList.add('active');
+}
+
+function closeShareRideModal() {
+  document.getElementById('share-ride-modal').classList.remove('active');
+}
+
+function copyShareLink() {
+  const link = 'huckepack.app/ride/' + Math.random().toString(36).substr(2, 9);
+  console.log('Share link copied:', link);
+  alert('Link kopiert: ' + link);
+}
+
+function showSOSDialog() {
+  document.getElementById('sos-dialog').classList.add('active');
+}
+
+function closeDialog(dialogId) {
+  document.getElementById(dialogId).classList.remove('active');
+}
+
+function callEmergency() {
+  alert('Notruf wird getätigt...');
+  closeDialog('sos-dialog');
+}
+
+function sendLocationToContact() {
+  alert('Standort wird an Notfallkontakt gesendet...');
+  closeDialog('sos-dialog');
+}
+
+// ===== INIT =====
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('map-dest').addEventListener('input', function() {
+    clearTimeout(geocodingDebounceTimer);
+    geocodingDebounceTimer = setTimeout(() => {
+      performGeocoding(this.value, 'map-dest-dropdown');
+    }, 300);
+  });
+
+  initApp();
+});
+</script>
+</body>
+</html>
