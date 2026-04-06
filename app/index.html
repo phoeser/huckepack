@@ -482,6 +482,226 @@
     font-size: 14px;
   }
   .ride-create-btn:active { background: var(--green-700); }
+
+  /* ===== TASK 1: DESIGN/UX POLISH ===== */
+
+  /* Screen transitions - fade in/out */
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+  .screen.active { animation: fadeIn 0.3s ease-out; }
+  .fade-in { animation: fadeIn 0.3s ease-out; }
+
+  /* Card hover effects */
+  .mode-card, .planned-ride-card, .drv-car-card {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .mode-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  }
+  .planned-ride-card:hover, .drv-car-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  }
+
+  /* Button hover/active animations */
+  .btn-primary, .btn-secondary, .planned-ride-btn, .drv-btn, .rating-btn {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .btn-primary:hover, .btn-secondary:hover, .planned-ride-btn:hover, .drv-btn:hover, .rating-btn:hover {
+    transform: scale(0.98);
+  }
+
+  /* Enhanced bottom nav with labels and active indicator */
+  .nav-btn {
+    position: relative;
+    font-size: 20px;
+    transition: all 0.3s ease;
+  }
+  .nav-btn::after {
+    content: '';
+    position: absolute;
+    bottom: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--green-700);
+    opacity: 0;
+    transition: all 0.3s ease;
+  }
+  .nav-btn.active::after {
+    opacity: 1;
+  }
+
+  /* Loading spinner animation */
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  .spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--green-200);
+    border-top-color: var(--green-600);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  .loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.3);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+  }
+  .loading-overlay.active {
+    display: flex;
+  }
+  .loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(255,255,255,0.2);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  /* Improved box shadows throughout */
+  .planned-ride-card, .drv-car-card {
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .planned-ride-card:hover, .drv-car-card:hover {
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  }
+
+  /* Greeting card with gradient */
+  .greeting-card {
+    background: linear-gradient(135deg, var(--green-700) 0%, var(--forest) 100%);
+    color: #fff;
+    padding: 24px 20px;
+    margin: 16px 20px;
+    border-radius: 16px;
+    box-shadow: 0 4px 12px rgba(22,163,74,0.2);
+  }
+  .greeting-card-title {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .greeting-card-subtitle {
+    font-size: 14px;
+    opacity: 0.9;
+  }
+
+  /* Improved border-radius consistency */
+  input, textarea, select, button {
+    border-radius: 10px;
+  }
+
+  /* Action buttons section for available rides */
+  .available-rides-section {
+    padding: 0 20px 24px;
+  }
+  .available-rides-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .available-ride-card {
+    background: #fff;
+    padding: 16px;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    border-left: 4px solid var(--teal-600);
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .available-ride-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  }
+  .available-ride-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+  }
+  .available-ride-route {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .available-ride-time {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 6px;
+  }
+  .available-ride-price {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--green-700);
+  }
+  .available-ride-driver {
+    font-size: 12px;
+    color: #999;
+  }
+
+  /* Action buttons */
+  .ride-action-btn {
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+    transition: all 0.2s;
+  }
+  .ride-request-btn {
+    background: var(--green-600);
+    color: #fff;
+    width: 100%;
+    margin-top: 10px;
+  }
+  .ride-request-btn:active {
+    background: var(--green-700);
+    transform: scale(0.98);
+  }
+
+  /* Modal fade-in */
+  .modal-overlay { animation: fadeIn 0.2s ease-out; }
+
+  /* Home action buttons */
+  .home-action-btn {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 15px;
+    margin-bottom: 12px;
+    transition: all 0.2s;
+  }
+  .home-search-btn {
+    background: var(--teal-600);
+    color: #fff;
+  }
+  .home-search-btn:active {
+    background: var(--teal-600);
+    transform: scale(0.98);
+  }
+  .home-offer-btn {
+    background: var(--green-600);
+    color: #fff;
+  }
+  .home-offer-btn:active {
+    background: var(--green-700);
+    transform: scale(0.98);
+  }
 </style>
 </head>
 <body>
@@ -641,6 +861,22 @@
     <div class="mode-card" id="mode-driver" onclick="setMode('driver')">
       <div class="mode-card-icon">🚗</div>
       <div class="mode-card-text">Fahrer</div>
+    </div>
+  </div>
+
+  <!-- Available Rides / Quick Actions Section (Task 2) -->
+  <div class="planned-rides-section" id="quick-actions-section">
+    <!-- For Walkers (Mitfahrer) -->
+    <div id="walker-actions" style="display: none;">
+      <div class="section-title">Fahrt suchen</div>
+      <button class="home-search-btn home-action-btn" onclick="openSearchRideModal()">🔍 Fahrt suchen</button>
+      <div id="available-rides-list" class="available-rides-list"></div>
+    </div>
+    <!-- For Drivers (Fahrer) -->
+    <div id="driver-actions" style="display: none;">
+      <div class="section-title">Fahrt anbieten</div>
+      <button class="home-offer-btn home-action-btn" onclick="openOfferRideModal()">🚗 Fahrt anbieten</button>
+      <div id="pending-requests-list" class="available-rides-list"></div>
     </div>
   </div>
 
@@ -976,6 +1212,66 @@
       <button class="dialog-btn dialog-confirm" onclick="sendLocationToContact()">Standort an Kontakt senden</button>
       <button class="dialog-btn dialog-cancel" onclick="closeDialog('sos-dialog')">Abbrechen</button>
     </div>
+  </div>
+</div>
+
+<!-- Task 2: Offer Ride Modal -->
+<div class="modal-overlay" id="offer-ride-modal">
+  <div class="modal-content">
+    <button class="modal-close" onclick="closeOfferRideModal()">×</button>
+    <div class="modal-header">Fahrt anbieten</div>
+
+    <div class="ride-form-group">
+      <label>Startpunkt</label>
+      <input type="text" id="offer-start" placeholder="z.B. Schwabing">
+    </div>
+
+    <div class="ride-form-group">
+      <label>Ziel</label>
+      <input type="text" id="offer-dest" placeholder="z.B. Marienplatz">
+    </div>
+
+    <div class="ride-form-group">
+      <label>Abfahrtszeit</label>
+      <input type="datetime-local" id="offer-time">
+    </div>
+
+    <div class="ride-form-group">
+      <label>Freie Plätze</label>
+      <select id="offer-seats">
+        <option>1</option>
+        <option>2</option>
+        <option selected>3</option>
+        <option>4</option>
+      </select>
+    </div>
+
+    <button class="ride-create-btn" onclick="submitOfferRide()">Fahrt anbieten</button>
+  </div>
+</div>
+
+<!-- Task 2: Search Ride Modal -->
+<div class="modal-overlay" id="search-ride-modal">
+  <div class="modal-content">
+    <button class="modal-close" onclick="closeSearchRideModal()">×</button>
+    <div class="modal-header">Fahrt suchen</div>
+
+    <div class="ride-form-group">
+      <label>Startpunkt</label>
+      <input type="text" id="search-start" placeholder="z.B. Schwabing">
+    </div>
+
+    <div class="ride-form-group">
+      <label>Ziel</label>
+      <input type="text" id="search-dest" placeholder="z.B. Marienplatz">
+    </div>
+
+    <div class="ride-form-group">
+      <label>Wunschzeit</label>
+      <input type="datetime-local" id="search-time">
+    </div>
+
+    <button class="ride-create-btn" onclick="submitSearchRide()">Fahrt suchen</button>
   </div>
 </div>
 
@@ -1417,6 +1713,8 @@ function showScreen(id) {
   if (id === 'home') {
     document.querySelectorAll('.nav-btn').forEach((btn, i) => btn.classList.toggle('active', i === 0));
     updateDashboard();
+    updateQuickActionsUI();
+    loadAvailableRides();
   }
 }
 
@@ -1790,7 +2088,7 @@ function toggleDay(btn, day) {
   btn.classList.toggle('active');
 }
 
-function createPlannedRide() {
+async function createPlannedRide() {
   const start = document.getElementById('ride-start').value;
   const dest = document.getElementById('ride-dest').value;
   const date = document.getElementById('ride-date').value;
@@ -1813,6 +2111,30 @@ function createPlannedRide() {
 
   userData.plannedRides.push(ride);
   console.log('Planned ride created:', ride);
+
+  // Also save to Firestore if available
+  if (db && auth && auth.currentUser) {
+    try {
+      const dateTime = new Date(date + 'T' + time);
+      await db.collection('rides').add({
+        userId: auth.currentUser.uid,
+        userName: userData.name || 'Unbekannt',
+        userRating: userData.rating || 0,
+        type: appMode === 'driver' ? 'offer' : 'request',
+        start: start,
+        startCoords: new firebase.firestore.GeoPoint(userPos.lat, userPos.lng),
+        destination: dest,
+        destCoords: new firebase.firestore.GeoPoint(userPos.lat, userPos.lng),
+        departureTime: firebase.firestore.FieldValue.serverTimestamp(),
+        seats: parseInt(seats),
+        status: 'active',
+        price: 0,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    } catch (e) {
+      console.error('Error saving planned ride to Firestore:', e);
+    }
+  }
 
   closePlannedRideModal();
   alert('Fahrt geplant!');
@@ -1850,6 +2172,294 @@ function sendLocationToContact() {
   alert('Standort wird an Notfallkontakt gesendet...');
   closeDialog('sos-dialog');
 }
+
+// ===== TASK 2: FIRESTORE REAL-TIME MATCHING =====
+
+// Show/hide quick action sections based on mode
+function updateQuickActionsUI() {
+  const walkerActions = document.getElementById('walker-actions');
+  const driverActions = document.getElementById('driver-actions');
+  if (walkerActions && driverActions) {
+    if (appMode === 'walker') {
+      walkerActions.style.display = 'block';
+      driverActions.style.display = 'none';
+    } else {
+      walkerActions.style.display = 'none';
+      driverActions.style.display = 'block';
+    }
+  }
+}
+
+// Load and display available rides from Firestore
+async function loadAvailableRides() {
+  if (!db) return;
+  try {
+    const rideType = appMode === 'walker' ? 'offer' : 'request';
+    const query = db.collection('rides')
+      .where('type', '==', rideType)
+      .where('status', '==', 'active');
+
+    const snapshot = await query.get();
+    const listId = appMode === 'walker' ? 'available-rides-list' : 'pending-requests-list';
+    const listEl = document.getElementById(listId);
+    if (!listEl) return;
+
+    listEl.innerHTML = '';
+
+    if (snapshot.empty) {
+      listEl.innerHTML = '<div style="padding:16px;text-align:center;color:#999;font-size:14px;">Keine Fahrten verfügbar</div>';
+      return;
+    }
+
+    snapshot.forEach(doc => {
+      const ride = doc.data();
+      const card = createAvailableRideCard(ride, doc.id);
+      listEl.appendChild(card);
+    });
+  } catch (e) {
+    console.error('Error loading available rides:', e);
+  }
+}
+
+// Create a ride card for available rides
+function createAvailableRideCard(ride, rideId) {
+  const card = document.createElement('div');
+  card.className = 'available-ride-card fade-in';
+
+  const distKm = haversineDistance(userPos.lat, userPos.lng,
+    ride.startCoords.lat || ride.startCoords._latitude,
+    ride.startCoords.lng || ride.startCoords._longitude);
+  const fare = calculateRideFare(distKm);
+  const displayPrice = appMode === 'walker' ? fare.riderPrice : fare.driverEarnings;
+
+  const depTime = new Date(ride.departureTime.toDate ? ride.departureTime.toDate() : ride.departureTime);
+  const timeStr = depTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+
+  card.innerHTML = `
+    <div class="available-ride-header">
+      <div>
+        <div class="available-ride-route">${ride.start} → ${ride.destination}</div>
+        <div class="available-ride-time">${timeStr} • ${ride.seats} Plätze</div>
+        <div class="available-ride-driver">${ride.userName} • ⭐ ${ride.userRating || 0}</div>
+      </div>
+      <div class="available-ride-price">${displayPrice.toFixed(2)}€</div>
+    </div>
+    <button class="ride-request-btn" onclick="requestRideOffer('${rideId}')">${appMode === 'walker' ? '📍 Anfragen' : '✓ Annehmen'}</button>
+  `;
+
+  return card;
+}
+
+// Modal functions for offer ride
+function openOfferRideModal() {
+  document.getElementById('offer-ride-modal').classList.add('active');
+  const now = new Date().toISOString().slice(0, 16);
+  document.getElementById('offer-time').value = now;
+}
+
+function closeOfferRideModal() {
+  document.getElementById('offer-ride-modal').classList.remove('active');
+}
+
+async function submitOfferRide() {
+  const start = document.getElementById('offer-start').value;
+  const dest = document.getElementById('offer-dest').value;
+  const time = document.getElementById('offer-time').value;
+  const seats = parseInt(document.getElementById('offer-seats').value);
+
+  if (!start || !dest || !time) {
+    alert('Bitte alle Felder ausfüllen');
+    return;
+  }
+
+  if (!db || !auth || !auth.currentUser) {
+    alert('Nicht angemeldet');
+    return;
+  }
+
+  try {
+    // Show loading
+    const btn = event.target;
+    btn.disabled = true;
+    btn.textContent = '⏳ Wird gespeichert...';
+
+    const userId = auth.currentUser.uid;
+    const depTime = new Date(time);
+
+    await db.collection('rides').add({
+      userId: userId,
+      userName: userData.name || 'Unbekannt',
+      userRating: userData.rating || 0,
+      type: 'offer',
+      start: start,
+      startCoords: new firebase.firestore.GeoPoint(userPos.lat, userPos.lng),
+      destination: dest,
+      destCoords: new firebase.firestore.GeoPoint(userPos.lat, userPos.lng), // In real app, geocode dest
+      departureTime: firebase.firestore.FieldValue.serverTimestamp(),
+      seats: seats,
+      car: userData.car,
+      status: 'active',
+      price: 0, // Will be calculated by riders
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    alert('Fahrt angeboten! Du siehst jetzt Anfragen.');
+    closeOfferRideModal();
+    loadAvailableRides(); // Reload to show pending requests
+  } catch (e) {
+    alert('Fehler beim Speichern: ' + e.message);
+    console.error(e);
+  } finally {
+    const btn = event.target;
+    btn.disabled = false;
+    btn.textContent = 'Fahrt anbieten';
+  }
+}
+
+// Modal functions for search ride
+function openSearchRideModal() {
+  document.getElementById('search-ride-modal').classList.add('active');
+  const now = new Date().toISOString().slice(0, 16);
+  document.getElementById('search-time').value = now;
+}
+
+function closeSearchRideModal() {
+  document.getElementById('search-ride-modal').classList.remove('active');
+}
+
+async function submitSearchRide() {
+  const start = document.getElementById('search-start').value;
+  const dest = document.getElementById('search-dest').value;
+  const time = document.getElementById('search-time').value;
+
+  if (!start || !dest || !time) {
+    alert('Bitte alle Felder ausfüllen');
+    return;
+  }
+
+  if (!db || !auth || !auth.currentUser) {
+    alert('Nicht angemeldet');
+    return;
+  }
+
+  try {
+    const btn = event.target;
+    btn.disabled = true;
+    btn.textContent = '⏳ Wird gespeichert...';
+
+    const userId = auth.currentUser.uid;
+    const reqTime = new Date(time);
+
+    await db.collection('rides').add({
+      userId: userId,
+      userName: userData.name || 'Unbekannt',
+      userRating: userData.rating || 0,
+      type: 'request',
+      start: start,
+      startCoords: new firebase.firestore.GeoPoint(userPos.lat, userPos.lng),
+      destination: dest,
+      destCoords: new firebase.firestore.GeoPoint(userPos.lat, userPos.lng), // In real app, geocode dest
+      departureTime: firebase.firestore.FieldValue.serverTimestamp(),
+      seats: 1,
+      status: 'active',
+      price: 0,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    alert('Fahrt gesucht! Du siehst jetzt verfügbare Angebote.');
+    closeSearchRideModal();
+    loadAvailableRides(); // Reload to show offers
+  } catch (e) {
+    alert('Fehler beim Speichern: ' + e.message);
+    console.error(e);
+  } finally {
+    const btn = event.target;
+    btn.disabled = false;
+    btn.textContent = 'Fahrt suchen';
+  }
+}
+
+// Request a ride offer (rider requests to join driver's offer)
+async function requestRideOffer(rideId) {
+  if (!db || !auth || !auth.currentUser) {
+    alert('Nicht angemeldet');
+    return;
+  }
+
+  try {
+    // Update the ride status to matched
+    await db.collection('rides').doc(rideId).update({
+      status: 'matched',
+      matchedWith: auth.currentUser.uid
+    });
+
+    alert('Fahrt gebucht! Der Fahrer wird benachrichtigt.');
+    userData.trips++;
+    updateUIWithUserData();
+    loadAvailableRides();
+  } catch (e) {
+    alert('Fehler: ' + e.message);
+    console.error(e);
+  }
+}
+
+// Accept a ride request (driver accepts rider's request)
+async function acceptRideRequest(rideId) {
+  if (!db || !auth || !auth.currentUser) {
+    alert('Nicht angemeldet');
+    return;
+  }
+
+  try {
+    await db.collection('rides').doc(rideId).update({
+      status: 'matched',
+      matchedWith: auth.currentUser.uid
+    });
+
+    alert('Anfrage angenommen!');
+    userData.trips++;
+    updateUIWithUserData();
+    loadAvailableRides();
+  } catch (e) {
+    alert('Fehler: ' + e.message);
+    console.error(e);
+  }
+}
+
+// Set up real-time listener for available rides
+function setupRidesListener() {
+  if (!db) return;
+
+  const rideType = appMode === 'walker' ? 'offer' : 'request';
+
+  db.collection('rides')
+    .where('type', '==', rideType)
+    .where('status', '==', 'active')
+    .onSnapshot(snapshot => {
+      loadAvailableRides();
+    }, error => {
+      console.error('Error setting up rides listener:', error);
+    });
+}
+
+// Update the setMode function to include real-time loading
+const originalSetMode = window.setMode;
+window.setMode = function(mode) {
+  appMode = mode;
+  document.getElementById('mode-walker').classList.toggle('active', mode === 'walker');
+  document.getElementById('mode-driver').classList.toggle('active', mode === 'driver');
+  updateQuickActionsUI();
+  updateDashboard();
+
+  // Load rides for the selected mode
+  loadAvailableRides();
+
+  if (mode === 'driver') {
+    setTimeout(() => showScreen('driver-screen'), 200);
+  } else {
+    showScreen('map-screen');
+  }
+};
 
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded', function() {
