@@ -22,6 +22,9 @@
     --green-800: #166534; --green-900: #14532d;
     --teal-500: #14b8a6; --teal-600: #0d9488;
     --forest: #1a5c35;
+    --earth-50: #faf6f1; --earth-100: #f0e6d6; --earth-200: #e0ccad;
+    --earth-400: #b8956a; --earth-500: #a67c52; --earth-600: #8b6440;
+    --earth-700: #6d4c30; --earth-800: #523a24;
     --safe-bottom: env(safe-area-inset-bottom, 0px);
   }
 
@@ -43,7 +46,7 @@
 
   /* ===== LOGIN ===== */
   #login {
-    background: linear-gradient(160deg, #166534, #14532d, #0f3d21);
+    background: linear-gradient(160deg, #166534, #14532d, var(--earth-800));
     justify-content: center; align-items: center; padding: 40px 24px; text-align: center;
   }
   .login-container { width: 100%; max-width: 360px; }
@@ -93,7 +96,7 @@
 
   /* ===== SPLASH ===== */
   #splash {
-    background: linear-gradient(160deg, #166534, #14532d, #0f3d21);
+    background: linear-gradient(160deg, #166534, #14532d, var(--earth-800));
     justify-content: center; align-items: center; text-align: center; padding: 40px;
   }
   .splash-logo { font-size: 64px; margin-bottom: 16px; }
@@ -112,7 +115,7 @@
   }
 
   /* ===== ONBOARDING ===== */
-  #onboarding { background: linear-gradient(160deg, #166534, #14532d, #0f3d21); }
+  #onboarding { background: linear-gradient(160deg, #166534, #14532d, var(--earth-800)); }
   .onboarding-container { flex: 1; display: flex; flex-direction: column; }
   .onboarding-content { flex: 1; display: flex; align-items: center; justify-content: center; padding: 40px 24px; }
   .onboarding-slide { display: none; text-align: center; color: #fff; width: 100%; }
@@ -158,7 +161,7 @@
   /* Mode cards */
   .mode-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 24px 20px; }
   .mode-card {
-    background: #fff; padding: 24px 16px; border-radius: 16px; text-align: center; cursor: pointer;
+    background: var(--earth-50); padding: 24px 16px; border-radius: 16px; text-align: center; cursor: pointer;
     box-shadow: 0 1px 3px rgba(0,0,0,0.06); transition: all 0.2s;
   }
   .mode-card:active { background: var(--green-50); transform: scale(0.98); }
@@ -362,15 +365,15 @@
 
   /* ===== PROFILE SCREEN ===== */
   #profile-screen { background: var(--green-50); overflow-y: auto; }
-  .profile-header { padding: 20px; text-align: center; background: #fff; border-bottom: 1px solid #e5e7eb; }
+  .profile-header { padding: 20px; text-align: center; background: linear-gradient(135deg, var(--green-800), var(--earth-700)); border-bottom: 1px solid #e5e7eb; }
   .profile-avatar {
-    width: 64px; height: 64px; margin: 0 auto 12px; background: linear-gradient(135deg, var(--green-600), var(--forest));
+    width: 64px; height: 64px; margin: 0 auto 12px; background: rgba(255,255,255,0.2);
     border-radius: 50%; display: flex; align-items: center; justify-content: center;
     color: #fff; font-weight: 700; font-size: 28px;
   }
-  .profile-name { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+  .profile-name { font-size: 20px; font-weight: 700; margin-bottom: 4px; color: #fff; }
   .profile-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; padding: 20px; text-align: center; }
-  .stat-item { background: #fff; padding: 12px; border-radius: 12px; }
+  .stat-item { background: #fff; padding: 12px; border-radius: 12px; border-bottom: 2px solid var(--earth-200); }
   .stat-value { font-size: 18px; font-weight: 700; color: var(--green-700); }
   .stat-label { font-size: 12px; color: #666; margin-top: 4px; }
   .profile-sections { padding: 0 20px 20px; }
@@ -524,7 +527,11 @@
   <div class="splash-title">Huckepack</div>
   <div class="splash-sub">Mitfahren. Sparen. Nachhaltigkeit.</div>
   <div class="splash-badge">🌿 Jede Fahrt zählt für unseren Planeten</div>
-  <button class="btn-primary" onclick="goToOnboarding()">Los geht's</button>
+  <button class="btn-primary" onclick="handleSkipIntroClick()">Los geht's</button>
+  <label style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:12px;font-size:13px;color:rgba(255,255,255,0.6);cursor:pointer;">
+    <input type="checkbox" id="skip-intro-check" style="accent-color:#22c55e;width:16px;height:16px;">
+    Intro beim nächsten Mal überspringen
+  </label>
 </div>
 
 <!-- ===== ONBOARDING ===== -->
@@ -750,6 +757,11 @@
   </div>
 
   <div style="height: 100px;"></div>
+
+  <!-- Admin Link -->
+  <div style="text-align:center;padding:12px 0 4px;">
+    <a href="../admin/" style="font-size:11px;color:#94a3b8;text-decoration:none;">Admin-Bereich</a>
+  </div>
 </div>
 
 <!-- Tracking Panel (shown when ride is active) -->
@@ -1049,14 +1061,30 @@ function proceedFromLogin(method) {
     userData.name = name;
   }
 
-  // Show splash briefly, then onboarding
+  // Check if skipIntro is enabled
+  const skipIntroEnabled = localStorage.getItem('skipIntro') === 'true';
+  
+  // Show splash briefly, then onboarding (or go directly to home if skipIntro enabled)
   showScreen('splash');
   setTimeout(() => {
-    goToOnboarding();
+    if (skipIntroEnabled) {
+      completeOnboarding();
+    } else {
+      goToOnboarding();
+    }
   }, 1500);
 }
 
 // ===== ONBOARDING =====
+function handleSkipIntroClick() {
+  const checkbox = document.getElementById('skip-intro-check');
+  if (checkbox.checked) {
+    window.skipIntro = true;
+    localStorage.setItem('skipIntro', 'true');
+  }
+  goToOnboarding();
+}
+
 function goToOnboarding() {
   showScreen('onboarding');
   updateOnboardingUI();
