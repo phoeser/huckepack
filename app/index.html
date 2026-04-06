@@ -1013,19 +1013,20 @@ let rideInProgress = false;
 
 // In-memory user data
 let userData = {
-  name: 'Paul',
+  name: '',
+  email: '',
   mode: 'walker',
-  trips: 12,
-  co2Saved: 4.2,
-  rating: 4.9,
+  trips: 0,
+  co2Saved: 0,
+  rating: 0,
   rideHistory: [],
   plannedRides: [],
   car: {
-    brand: 'BMW',
-    model: '3er',
-    color: 'weiß',
-    plate: 'M-PH 2026',
-    year: 2022,
+    brand: '',
+    model: '',
+    color: '',
+    plate: '',
+    year: 0,
     seats: 4
   }
 };
@@ -1153,18 +1154,84 @@ async function proceedFromLogin(method) {
 }
 
 function afterLoginSuccess() {
-  // Check if skipIntro is enabled
-  const skipIntroEnabled = localStorage.getItem('skipIntro') === 'true';
-
-  // Show splash briefly, then onboarding (or go directly to home if skipIntro enabled)
   showScreen('splash');
-  setTimeout(() => {
-    if (skipIntroEnabled) {
-      completeOnboarding();
-    } else {
-      goToOnboarding();
+  // Try to load existing user data from Firestore
+  loadUserFromFirestore().then(found => {
+    setTimeout(() => {
+      if (found) {
+        // User has saved profile — go straight to home
+        updateUIWithUserData();
+        showScreen('home');
+      } else {
+        // New user or no saved data — show onboarding
+        const skipIntroEnabled = localStorage.getItem('skipIntro') === 'true';
+        if (skipIntroEnabled) {
+          completeOnboarding();
+        } else {
+          goToOnboarding();
+        }
+      }
+    }, 1500);
+  });
+}
+
+// ===== FIRESTORE: SAVE & LOAD USER DATA =====
+async function saveUserToFirestore() {
+  if (!db || !auth || !auth.currentUser) return;
+  try {
+    const uid = auth.currentUser.uid;
+    await db.collection('users').doc(uid).set({
+      name: userData.name || '',
+      email: userData.email || auth.currentUser.email || '',
+      mode: userData.mode || 'walker',
+      trips: userData.trips || 0,
+      co2Saved: userData.co2Saved || 0,
+      rating: userData.rating || 0,
+      car: {
+        brand: userData.car.brand || '',
+        model: userData.car.model || '',
+        color: userData.car.color || '',
+        plate: userData.car.plate || '',
+        year: userData.car.year || 0,
+        seats: userData.car.seats || 4
+      },
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    console.log('Nutzerdaten in Firestore gespeichert');
+  } catch (e) {
+    console.error('Firestore Speichern fehlgeschlagen:', e);
+  }
+}
+
+async function loadUserFromFirestore() {
+  if (!db || !auth || !auth.currentUser) return false;
+  try {
+    const uid = auth.currentUser.uid;
+    const doc = await db.collection('users').doc(uid).get();
+    if (doc.exists) {
+      const data = doc.data();
+      userData.name = data.name || auth.currentUser.displayName || 'Nutzer';
+      userData.email = data.email || auth.currentUser.email || '';
+      userData.mode = data.mode || 'walker';
+      userData.trips = data.trips || 0;
+      userData.co2Saved = data.co2Saved || 0;
+      userData.rating = data.rating || 0;
+      if (data.car) {
+        userData.car.brand = data.car.brand || '';
+        userData.car.model = data.car.model || '';
+        userData.car.color = data.car.color || '';
+        userData.car.plate = data.car.plate || '';
+        userData.car.year = data.car.year || 0;
+        userData.car.seats = data.car.seats || 4;
+      }
+      console.log('Nutzerdaten aus Firestore geladen');
+      return true;
     }
-  }, 1500);
+    return false;
+  } catch (e) {
+    console.error('Firestore Laden fehlgeschlagen:', e);
+    return false;
+  }
 }
 
 // ===== ONBOARDING =====
@@ -1216,13 +1283,32 @@ function skipOnboarding() {
 }
 
 function completeOnboarding() {
-  userData.name = document.getElementById('onb-name').value || 'Paul';
-  userData.car.brand = document.getElementById('onb-car-brand').value || 'BMW';
-  userData.car.model = document.getElementById('onb-car-model').value || '3er';
-  userData.car.color = document.getElementById('onb-car-color').value || 'weiß';
-  userData.car.plate = document.getElementById('onb-car-plate').value || 'M-PH 2026';
-  userData.car.year = parseInt(document.getElementById('onb-car-year').value) || 2022;
-  userData.car.seats = parseInt(document.getElementById('onb-car-seats').value) || 4;
+  // Read values from onboarding form (if filled in)
+  const onbName = document.getElementById('onb-name');
+  const onbBrand = document.getElementById('onb-car-brand');
+  const onbModel = document.getElementById('onb-car-model');
+  const onbColor = document.getElementById('onb-car-color');
+  const onbPlate = document.getElementById('onb-car-plate');
+  const onbYear = document.getElementById('onb-car-year');
+  const onbSeats = document.getElementById('onb-car-seats');
+
+  if (onbName && onbName.value) userData.name = onbName.value;
+  if (onbBrand && onbBrand.value) userData.car.brand = onbBrand.value;
+  if (onbModel && onbModel.value) userData.car.model = onbModel.value;
+  if (onbColor && onbColor.value) userData.car.color = onbColor.value;
+  if (onbPlate && onbPlate.value) userData.car.plate = onbPlate.value;
+  if (onbYear && onbYear.value) userData.car.year = parseInt(onbYear.value);
+  if (onbSeats && onbSeats.value) userData.car.seats = parseInt(onbSeats.value);
+
+  // Use display name from Firebase Auth if no name was entered
+  if (!userData.name || userData.name === 'Paul') {
+    if (auth && auth.currentUser && auth.currentUser.displayName) {
+      userData.name = auth.currentUser.displayName;
+    }
+  }
+
+  // Save to Firestore
+  saveUserToFirestore();
 
   updateUIWithUserData();
   showScreen('home');
