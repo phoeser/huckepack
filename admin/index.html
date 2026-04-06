@@ -204,9 +204,13 @@ const MOCK_SETTINGS = {
   pricePerKmBase: 0.20,
   pricePerKmAbove: 0.10,
   tierThreshold: 10,
-  marginPercent: 5,
   maxPrice: 5.00,
   cancelFee: 0.50,
+  platformFeeTotal: 5,
+  platformFeeRider: 2.5,
+  platformFeeDriver: 2.5,
+  pickupRadiusM: 300,
+  destinationRadiusM: 350,
 };
 
 const MOCK_USERS = [
@@ -582,14 +586,15 @@ function SettingsPage() {
   // Example 1: Short ride (3.5 km)
   const example1Km = 3.5;
   const example1Price = calculateTieredPrice(example1Km, settings);
-  const example1Margin = example1Price * (settings.marginPercent / 100);
-  const example1Payout = example1Price - example1Margin;
+  const example1RiderPrice = parseFloat((example1Price * (1 + settings.platformFeeRider / 100)).toFixed(2));
+  const example1Margin = parseFloat((example1Price * (settings.platformFeeTotal / 100)).toFixed(2));
+  const example1Payout = parseFloat((example1Price * (1 - settings.platformFeeDriver / 100)).toFixed(2));
 
-  // Example 2: Long ride (14 km)
   const example2Km = 14;
   const example2Price = calculateTieredPrice(example2Km, settings);
-  const example2Margin = example2Price * (settings.marginPercent / 100);
-  const example2Payout = example2Price - example2Margin;
+  const example2RiderPrice = parseFloat((example2Price * (1 + settings.platformFeeRider / 100)).toFixed(2));
+  const example2Margin = parseFloat((example2Price * (settings.platformFeeTotal / 100)).toFixed(2));
+  const example2Payout = parseFloat((example2Price * (1 - settings.platformFeeDriver / 100)).toFixed(2));
 
   return (
     <div>
@@ -615,9 +620,32 @@ function SettingsPage() {
           <input className="form-input" type="number" step="1" min="1" value={settings.tierThreshold} onChange={e => update('tierThreshold', parseInt(e.target.value) || 10)} />
         </div>
         <div className="setting-card">
-          <label>App-Marge</label>
-          <div className="setting-value">{settings.marginPercent}%</div>
-          <input className="form-input" type="number" step="1" min="0" max="50" value={settings.marginPercent} onChange={e => update('marginPercent', parseInt(e.target.value) || 0)} />
+          <label>Plattformgebühr gesamt</label>
+          <div className="setting-value">{settings.platformFeeTotal}%</div>
+          <input className="form-input" type="number" step="0.5" min="0" max="50" value={settings.platformFeeTotal} onChange={e => { const v=parseFloat(e.target.value)||0; update('platformFeeTotal',v); update('platformFeeRider',parseFloat((v/2).toFixed(2))); update('platformFeeDriver',parseFloat((v/2).toFixed(2))); }} />
+          <small style={{color:'var(--text-muted)',fontSize:11}}>Wird automatisch hälftig aufgeteilt</small>
+        </div>
+        <div className="setting-card">
+          <label>Aufschlag Mitfahrer (+)</label>
+          <div className="setting-value">+{settings.platformFeeRider}%</div>
+          <input className="form-input" type="number" step="0.5" min="0" max="50" value={settings.platformFeeRider} onChange={e => update('platformFeeRider', parseFloat(e.target.value)||0)} />
+        </div>
+        <div className="setting-card">
+          <label>Abzug Fahrer (−)</label>
+          <div className="setting-value">−{settings.platformFeeDriver}%</div>
+          <input className="form-input" type="number" step="0.5" min="0" max="50" value={settings.platformFeeDriver} onChange={e => update('platformFeeDriver', parseFloat(e.target.value)||0)} />
+        </div>
+        <div className="setting-card">
+          <label>Matching: Pickup-Radius</label>
+          <div className="setting-value">{settings.pickupRadiusM} m</div>
+          <input className="form-input" type="number" step="10" min="50" max="2000" value={settings.pickupRadiusM} onChange={e => update('pickupRadiusM', parseInt(e.target.value)||300)} />
+          <small style={{color:'var(--text-muted)',fontSize:11}}>Check 1: Fahrer ≤ x m vom Mitfahrer-Standort</small>
+        </div>
+        <div className="setting-card">
+          <label>Matching: Ziel-Radius</label>
+          <div className="setting-value">{settings.destinationRadiusM} m</div>
+          <input className="form-input" type="number" step="10" min="50" max="2000" value={settings.destinationRadiusM} onChange={e => update('destinationRadiusM', parseInt(e.target.value)||350)} />
+          <small style={{color:'var(--text-muted)',fontSize:11}}>Check 2: Route ≤ x m vom Ziel des Mitfahrers</small>
         </div>
         <div className="setting-card">
           <label>Höchstpreis</label>
@@ -668,20 +696,22 @@ function SettingsPage() {
                   <td>{example2Price.toFixed(2)} EUR</td>
                 </tr>
                 <tr>
-                  <td style={{color:'var(--green-700)',fontWeight:600,paddingTop:16}}>App-Marge ({settings.marginPercent}%)</td>
-                  <td style={{color:'var(--green-700)',fontWeight:600,paddingTop:16}}>App-Marge ({settings.marginPercent}%)</td>
+                  <td style={{color:'var(--green-700)',fontWeight:600,paddingTop:16}}>Plattformgebühr ({settings.platformFeeTotal}%)</td>
+                  <td style={{color:'var(--green-700)',fontWeight:600,paddingTop:16}}>Plattformgebühr ({settings.platformFeeTotal}%)</td>
                 </tr>
                 <tr>
                   <td style={{color:'var(--green-700)',fontWeight:600}}>{example1Margin.toFixed(2)} EUR</td>
                   <td style={{color:'var(--green-700)',fontWeight:600}}>{example2Margin.toFixed(2)} EUR</td>
                 </tr>
+                <tr><td style={{fontWeight:600,paddingTop:8}}>Preis Mitfahrer</td><td style={{fontWeight:600,paddingTop:8}}>Preis Mitfahrer</td></tr>
+                <tr><td>+{example1RiderPrice.toFixed(2)} EUR (+{settings.platformFeeRider}%)</td><td>+{example2RiderPrice.toFixed(2)} EUR (+{settings.platformFeeRider}%)</td></tr>
                 <tr>
-                  <td style={{fontWeight:600,paddingTop:16}}>Auszahlung Fahrer</td>
-                  <td style={{fontWeight:600,paddingTop:16}}>Auszahlung Fahrer</td>
+                  <td style={{fontWeight:600,paddingTop:8}}>Auszahlung Fahrer</td>
+                  <td style={{fontWeight:600,paddingTop:8}}>Auszahlung Fahrer</td>
                 </tr>
                 <tr>
-                  <td>{example1Payout.toFixed(2)} EUR</td>
-                  <td>{example2Payout.toFixed(2)} EUR</td>
+                  <td>{example1Payout.toFixed(2)} EUR (−{settings.platformFeeDriver}%)</td>
+                  <td>{example2Payout.toFixed(2)} EUR (−{settings.platformFeeDriver}%)</td>
                 </tr>
               </tbody>
             </table>
