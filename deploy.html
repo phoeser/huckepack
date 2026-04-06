@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Huckepack Deploy</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', sans-serif; background: linear-gradient(160deg, #166534, #14532d, #523a24); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .card { background: #fff; border-radius: 20px; padding: 40px; max-width: 480px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+  h1 { font-size: 24px; margin-bottom: 8px; color: #166534; }
+  .sub { font-size: 14px; color: #666; margin-bottom: 24px; }
+  .config { margin-bottom: 20px; }
+  .config label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #333; }
+  .config input, .config select { width: 100%; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 8px; font-family: inherit; font-size: 14px; }
+  .config input:focus, .config select:focus { outline: none; border-color: #16a34a; }
+  .drop-zone { border: 2px dashed #bbf7d0; border-radius: 16px; padding: 40px 20px; text-align: center; cursor: pointer; transition: all 0.3s; background: #f0fdf4; margin-bottom: 20px; }
+  .drop-zone:hover, .drop-zone.dragover { border-color: #16a34a; background: #dcfce7; }
+  .drop-zone .icon { font-size: 48px; margin-bottom: 12px; }
+  .drop-zone .text { font-size: 14px; color: #666; }
+  .drop-zone .filename { font-size: 16px; font-weight: 700; color: #166534; margin-top: 8px; }
+  .btn { width: 100%; padding: 14px; background: #16a34a; color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.2s; }
+  .btn:hover { background: #15803d; }
+  .btn:disabled { background: #ccc; cursor: not-allowed; }
+  .status { margin-top: 16px; padding: 12px; border-radius: 8px; font-size: 13px; display: none; }
+  .status.success { display: block; background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+  .status.error { display: block; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+  .status.loading { display: block; background: #f0f9ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+  .log { margin-top: 12px; font-size: 11px; color: #999; max-height: 100px; overflow-y: auto; }
+  input[type="file"] { display: none; }
+  .token-row { display: flex; gap: 8px; }
+  .token-row input { flex: 1; }
+  .token-row button { padding: 10px 16px; background: #166534; color: #fff; border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>🍃 Huckepack Deploy</h1>
+  <div class="sub">Dateien direkt auf GitHub hochladen — kein Drag & Drop mehr nötig.</div>
+
+  <div class="config" id="token-section">
+    <label>GitHub Token</label>
+    <div class="token-row">
+      <input type="password" id="token" placeholder="ghp_..." value="">
+      <button onclick="saveToken()">Speichern</button>
+    </div>
+  </div>
+
+  <div class="config">
+    <label>Ziel-Pfad im Repository</label>
+    <select id="target-path">
+      <option value="app/index.html">app/index.html (Haupt-App)</option>
+      <option value="admin/index.html">admin/index.html (Admin-Panel)</option>
+    </select>
+  </div>
+
+  <div class="config">
+    <label>Commit-Nachricht</label>
+    <input type="text" id="commit-msg" placeholder="z.B. Update App mit neuen Features" value="Update via Huckepack Deploy">
+  </div>
+
+  <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+    <div class="icon">📁</div>
+    <div class="text">Datei hier ablegen oder klicken zum Auswählen</div>
+    <div class="filename" id="filename"></div>
+  </div>
+  <input type="file" id="file-input" accept=".html,.css,.js,.json" onchange="handleFile(this.files[0])">
+
+  <button class="btn" id="deploy-btn" onclick="deploy()" disabled>🚀 Auf GitHub deployen</button>
+
+  <div class="status" id="status"></div>
+  <div class="log" id="log"></div>
+</div>
+
+<script>
+const OWNER = 'phoeser';
+const REPO = 'huckepack';
+const BRANCH = 'main';
+
+let selectedFile = null;
+let fileContent = null;
+
+// Token management
+function loadToken() {
+  const saved = localStorage.getItem('gh_deploy_token');
+  if (saved) {
+    document.getElementById('token').value = saved;
+    document.getElementById('token-section').style.display = 'none';
+  }
+}
+
+function saveToken() {
+  const token = document.getElementById('token').value.trim();
+  if (token) {
+    localStorage.setItem('gh_deploy_token', token);
+    document.getElementById('token-section').style.display = 'none';
+    log('Token gespeichert');
+  }
+}
+
+function getToken() {
+  return document.getElementById('token').value.trim() || localStorage.getItem('gh_deploy_token') || '';
+}
+
+// Drag & Drop
+const dropZone = document.getElementById('drop-zone');
+dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+
+function handleFile(file) {
+  if (!file) return;
+  selectedFile = file;
+  document.getElementById('filename').textContent = file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
+  document.getElementById('deploy-btn').disabled = false;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    fileContent = btoa(unescape(encodeURIComponent(e.target.result)));
+    // For binary-safe base64, use ArrayBuffer
+    const reader2 = new FileReader();
+    reader2.onload = (e2) => {
+      const bytes = new Uint8Array(e2.target.result);
+      let binary = '';
+      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+      fileContent = btoa(binary);
+      log('Datei geladen: ' + file.name);
+    };
+    reader2.readAsArrayBuffer(file);
+  };
+  reader.readAsText(file);
+}
+
+function setStatus(type, msg) {
+  const el = document.getElementById('status');
+  el.className = 'status ' + type;
+  el.textContent = msg;
+}
+
+function log(msg) {
+  const el = document.getElementById('log');
+  el.textContent = new Date().toLocaleTimeString() + ': ' + msg + '\n' + el.textContent;
+}
+
+async function deploy() {
+  const token = getToken();
+  if (!token) { setStatus('error', 'Bitte GitHub Token eingeben!'); document.getElementById('token-section').style.display = 'block'; return; }
+  if (!fileContent) { setStatus('error', 'Bitte eine Datei auswählen!'); return; }
+
+  const path = document.getElementById('target-path').value;
+  const message = document.getElementById('commit-msg').value || 'Update via Deploy Tool';
+  const btn = document.getElementById('deploy-btn');
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Wird hochgeladen...';
+  setStatus('loading', 'Lade aktuelle Datei-Version...');
+
+  try {
+    // Step 1: Get current SHA
+    log('Hole aktuellen SHA...');
+    let sha = null;
+    try {
+      const resp = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/${path}?ref=${BRANCH}`, {
+        headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' }
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        sha = data.sha;
+        log('SHA gefunden: ' + sha.substring(0, 7));
+      }
+    } catch(e) {
+      log('Neue Datei wird erstellt');
+    }
+
+    // Step 2: Push file
+    setStatus('loading', 'Pushe Datei auf GitHub...');
+    log('Starte Upload...');
+
+    const body = {
+      message: message,
+      content: fileContent,
+      branch: BRANCH
+    };
+    if (sha) body.sha = sha;
+
+    const pushResp = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/${path}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `token ${token}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+
+    if (!pushResp.ok) {
+      const err = await pushResp.json();
+      throw new Error(err.message || 'Push fehlgeschlagen');
+    }
+
+    const result = await pushResp.json();
+    const commitSha = result.commit?.sha?.substring(0, 7) || '?';
+
+    setStatus('success', '✅ Erfolgreich deployed! Commit: ' + commitSha);
+    log('Deploy erfolgreich! Commit: ' + commitSha);
+    log('GitHub Pages wird in 1-2 Minuten aktualisiert.');
+
+    btn.textContent = '✅ Deployed!';
+    setTimeout(() => {
+      btn.textContent = '🚀 Auf GitHub deployen';
+      btn.disabled = false;
+    }, 3000);
+
+  } catch (e) {
+    setStatus('error', '❌ Fehler: ' + e.message);
+    log('Fehler: ' + e.message);
+    btn.textContent = '🚀 Auf GitHub deployen';
+    btn.disabled = false;
+  }
+}
+
+// Init
+loadToken();
+</script>
+</body>
+</html>
