@@ -1053,18 +1053,109 @@ function toggleLoginForm() {
   }
 }
 
-function proceedFromLogin(method) {
-  window.authState.isLoggedIn = true;
-  window.authState.method = method;
+function validatePassword(password) {
+  if (password.length < 7) return 'Passwort muss mindestens 7 Zeichen lang sein.';
+  if (!/[a-zA-Z]/.test(password)) return 'Passwort muss mindestens einen Buchstaben enthalten.';
+  if (!/[0-9]/.test(password)) return 'Passwort muss mindestens eine Zahl enthalten.';
+  return null;
+}
 
-  if (method === 'register') {
-    const name = document.getElementById('register-name').value || 'Nutzer';
-    userData.name = name;
+function showLoginError(msg) {
+  let errEl = document.getElementById('login-error');
+  if (!errEl) {
+    errEl = document.createElement('div');
+    errEl.id = 'login-error';
+    errEl.style.cssText = 'color:#ff6b6b;font-size:13px;text-align:center;margin:8px 0;padding:8px;background:rgba(255,0,0,0.1);border-radius:8px;';
+    const loginForm = document.getElementById('login-form');
+    const regForm = document.getElementById('register-form');
+    const activeForm = loginForm.style.display !== 'none' ? loginForm : regForm;
+    activeForm.appendChild(errEl);
+  }
+  errEl.textContent = msg;
+  errEl.style.display = 'block';
+  setTimeout(() => { if(errEl) errEl.style.display = 'none'; }, 5000);
+}
+
+async function proceedFromLogin(method) {
+  // Clear previous errors
+  const errEl = document.getElementById('login-error');
+  if (errEl) errEl.style.display = 'none';
+
+  if (method === 'google') {
+    // Google Sign-In via Firebase
+    if (auth) {
+      try {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        const result = await auth.signInWithPopup(provider);
+        userData.name = result.user.displayName || 'Nutzer';
+        userData.email = result.user.email;
+        window.authState.isLoggedIn = true;
+        window.authState.method = 'google';
+        afterLoginSuccess();
+      } catch (e) {
+        showLoginError('Google-Anmeldung fehlgeschlagen: ' + e.message);
+      }
+    } else {
+      showLoginError('Firebase ist nicht konfiguriert.');
+    }
+    return;
   }
 
+  if (method === 'email') {
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    if (!email || !password) { showLoginError('Bitte E-Mail und Passwort eingeben.'); return; }
+    if (auth) {
+      try {
+        const result = await auth.signInWithEmailAndPassword(email, password);
+        userData.name = result.user.displayName || email.split('@')[0];
+        userData.email = result.user.email;
+        window.authState.isLoggedIn = true;
+        window.authState.method = 'email';
+        afterLoginSuccess();
+      } catch (e) {
+        if (e.code === 'auth/user-not-found') showLoginError('Kein Konto mit dieser E-Mail gefunden.');
+        else if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') showLoginError('Falsches Passwort.');
+        else showLoginError('Anmeldung fehlgeschlagen: ' + e.message);
+      }
+    } else {
+      showLoginError('Firebase ist nicht konfiguriert.');
+    }
+    return;
+  }
+
+  if (method === 'register') {
+    const name = document.getElementById('register-name').value.trim();
+    const email = document.getElementById('register-email').value.trim();
+    const password = document.getElementById('register-password').value;
+    if (!name || !email || !password) { showLoginError('Bitte alle Felder ausfüllen.'); return; }
+    const pwError = validatePassword(password);
+    if (pwError) { showLoginError(pwError); return; }
+    if (auth) {
+      try {
+        const result = await auth.createUserWithEmailAndPassword(email, password);
+        await result.user.updateProfile({ displayName: name });
+        userData.name = name;
+        userData.email = email;
+        window.authState.isLoggedIn = true;
+        window.authState.method = 'register';
+        afterLoginSuccess();
+      } catch (e) {
+        if (e.code === 'auth/email-already-in-use') showLoginError('Diese E-Mail ist bereits registriert.');
+        else if (e.code === 'auth/weak-password') showLoginError('Passwort ist zu schwach.');
+        else showLoginError('Registrierung fehlgeschlagen: ' + e.message);
+      }
+    } else {
+      showLoginError('Firebase ist nicht konfiguriert.');
+    }
+    return;
+  }
+}
+
+function afterLoginSuccess() {
   // Check if skipIntro is enabled
   const skipIntroEnabled = localStorage.getItem('skipIntro') === 'true';
-  
+
   // Show splash briefly, then onboarding (or go directly to home if skipIntro enabled)
   showScreen('splash');
   setTimeout(() => {
@@ -1138,27 +1229,30 @@ function completeOnboarding() {
 }
 
 function updateUIWithUserData() {
-  const initial = userData.name.charAt(0).toUpperCase();
-  document.getElementById('user-greeting-name').textContent = userData.name;
-  document.getElementById('home-avatar').textContent = initial;
-  document.getElementById('profile-avatar').textContent = initial;
-  document.getElementById('profile-name').textContent = userData.name;
-  document.getElementById('profile-trips').textContent = userData.trips;
-  document.getElementById('profile-rating').textContent = userData.rating;
-  document.getElementById('stat-trips').textContent = userData.trips;
-  document.getElementById('stat-rating').textContent = userData.rating + ' ⭐';
-  document.getElementById('stat-co2').textContent = userData.co2Saved.toFixed(1) + ' kg';
+  const initial = userData.name ? userData.name.charAt(0).toUpperCase() : '?';
+  const el = (id) => document.getElementById(id);
 
-  const carEmoji = { 'BMW': '🚙', 'VW': '🚗', 'Toyota': '🚕', 'Opel': '🚙' }[userData.car.brand] || '🚗';
-  document.getElementById('drv-car-emoji').textContent = carEmoji;
-  document.getElementById('drv-car-title').textContent = userData.car.brand + ' ' + userData.car.model + ', ' + userData.car.color;
-  document.getElementById('drv-car-info').textContent = 'Baujahr ' + userData.car.year + ' • ' + userData.car.seats + ' Sitzplätze';
-  document.getElementById('drv-car-plate').textContent = userData.car.plate;
+  if (el('user-greeting-name')) el('user-greeting-name').textContent = userData.name || 'Nutzer';
+  if (el('home-avatar')) el('home-avatar').textContent = initial;
+  if (el('profile-avatar')) el('profile-avatar').textContent = initial;
+  if (el('profile-name')) el('profile-name').textContent = userData.name || 'Nutzer';
+  if (el('profile-trips')) el('profile-trips').textContent = userData.trips || 0;
+  if (el('profile-rating')) el('profile-rating').textContent = userData.rating || 0;
+  if (el('stat-trips')) el('stat-trips').textContent = userData.trips || 0;
+  if (el('stat-rating')) el('stat-rating').textContent = (userData.rating || 0) + ' ⭐';
+  if (el('stat-co2')) el('stat-co2').textContent = (userData.co2Saved || 0).toFixed(1) + ' kg';
 
-  // Update share ride info
-  document.getElementById('share-driver-name').textContent = userData.name;
-  document.getElementById('share-car-info').textContent = userData.car.brand + ' ' + userData.car.model + ', ' + userData.car.color;
-  document.getElementById('share-license-plate').textContent = userData.car.plate;
+  if (userData.car) {
+    const carEmoji = { 'BMW': '🚙', 'VW': '🚗', 'Toyota': '🚕', 'Opel': '🚙' }[userData.car.brand] || '🚗';
+    if (el('drv-car-emoji')) el('drv-car-emoji').textContent = carEmoji;
+    if (el('drv-car-title')) el('drv-car-title').textContent = userData.car.brand + ' ' + userData.car.model + ', ' + userData.car.color;
+    if (el('drv-car-info')) el('drv-car-info').textContent = 'Baujahr ' + userData.car.year + ' • ' + userData.car.seats + ' Sitzplätze';
+    if (el('drv-car-plate')) el('drv-car-plate').textContent = userData.car.plate;
+
+    if (el('share-driver-name')) el('share-driver-name').textContent = userData.name || 'Nutzer';
+    if (el('share-car-info')) el('share-car-info').textContent = userData.car.brand + ' ' + userData.car.model + ', ' + userData.car.color;
+    if (el('share-license-plate')) el('share-license-plate').textContent = userData.car.plate;
+  }
 }
 
 // ===== SCREEN NAV =====
