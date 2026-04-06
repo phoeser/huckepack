@@ -13,6 +13,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<script src="https://js.stripe.com/v3/"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
@@ -643,6 +644,48 @@
     font-weight: 700;
     color: var(--green-700);
   }
+  .available-ride-fee {
+    font-size: 11px;
+    color: #999;
+    font-weight: 400;
+  }
+  .ride-pay-btn {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: none;
+    background: linear-gradient(135deg, #635bff, #7c3aed);
+    color: #fff;
+    font-weight: 700;
+    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s;
+  }
+  .ride-pay-btn:active { transform: scale(0.97); opacity: 0.9; }
+  .ride-pay-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(99,91,255,0.3); }
+    50% { box-shadow: 0 0 20px 4px rgba(99,91,255,0.2); }
+  }
+  .ride-pay-btn.ready { animation: pulse-glow 2s infinite; }
+  .payment-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .payment-badge.pending { background: #fef3c7; color: #92400e; }
+  .payment-badge.paid { background: #d1fae5; color: #065f46; }
+  .payment-badge.free { background: #e0e7ff; color: #3730a3; }
   .available-ride-driver {
     font-size: 12px;
     color: #999;
@@ -1246,6 +1289,16 @@
       </select>
     </div>
 
+    <div id="offer-price-preview" style="margin-top: 4px; padding: 12px; background: var(--green-50); border-radius: 10px; font-size: 13px; color: var(--green-800); display: none;">
+      <div style="font-weight: 600; margin-bottom: 6px;">💰 Geschätzter Fahrpreis</div>
+      <div>Entfernung: ~<span id="offer-est-km">0</span> km</div>
+      <div>Basispreis: <span id="offer-base-price">0,00</span>€</div>
+      <div style="margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--green-200);">
+        Du erhältst: <strong id="offer-driver-gets" style="color: var(--green-700);">0,00€</strong>
+        <span style="color: #999; font-size: 11px;">(abzgl. 2,5% Gebühr)</span>
+      </div>
+    </div>
+
     <button class="ride-create-btn" onclick="submitOfferRide()">Fahrt anbieten</button>
   </div>
 </div>
@@ -1271,7 +1324,85 @@
       <input type="datetime-local" id="search-time">
     </div>
 
+    <div id="search-price-preview" style="margin-top: 4px; padding: 12px; background: var(--green-50); border-radius: 10px; font-size: 13px; color: var(--green-800); display: none;">
+      <div style="font-weight: 600; margin-bottom: 6px;">💰 Geschätzter Fahrpreis</div>
+      <div>Entfernung: ~<span id="search-est-km">0</span> km</div>
+      <div style="margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--green-200);">
+        Du zahlst: <strong id="search-rider-pays" style="color: var(--green-700);">0,00€</strong>
+        <span style="color: #999; font-size: 11px;">(inkl. 2,5% Gebühr)</span>
+      </div>
+    </div>
+
     <button class="ride-create-btn" onclick="submitSearchRide()">Fahrt suchen</button>
+  </div>
+</div>
+
+<!-- Active Ride Screen -->
+<div class="modal-overlay" id="active-ride-modal">
+  <div class="modal-content" style="text-align: center;">
+    <div id="active-ride-status" style="font-size: 48px; margin-bottom: 12px;">🚗</div>
+    <div class="modal-header" id="active-ride-title">Fahrt läuft...</div>
+    <div id="active-ride-info" style="text-align: left; margin: 16px 0;">
+      <div style="padding: 12px; background: var(--green-50); border-radius: 10px; margin-bottom: 12px;">
+        <div style="font-size: 13px; color: #666;">Route</div>
+        <div style="font-weight: 600;" id="active-ride-route">— → —</div>
+      </div>
+      <div style="padding: 12px; background: var(--green-50); border-radius: 10px; margin-bottom: 12px;">
+        <div style="font-size: 13px; color: #666;">Mitfahrer / Fahrer</div>
+        <div style="font-weight: 600;" id="active-ride-partner">—</div>
+      </div>
+      <div style="display: flex; gap: 10px;">
+        <div style="flex:1; padding: 12px; background: var(--green-50); border-radius: 10px;">
+          <div style="font-size: 13px; color: #666;">Entfernung</div>
+          <div style="font-weight: 600;" id="active-ride-distance">— km</div>
+        </div>
+        <div style="flex:1; padding: 12px; background: var(--green-50); border-radius: 10px;">
+          <div style="font-size: 13px; color: #666;" id="active-ride-price-label">Preis</div>
+          <div style="font-weight: 700; color: var(--green-700);" id="active-ride-price">—€</div>
+        </div>
+      </div>
+    </div>
+    <!-- Rider sees: pay button after arrival -->
+    <div id="active-ride-rider-actions" style="display: none;">
+      <button class="ride-pay-btn" onclick="completeRideAndPay()" id="pay-ride-btn">
+        💳 Angekommen — Jetzt bezahlen
+      </button>
+      <div style="font-size: 11px; color: #999; margin-top: 8px;">Bezahlung per Stripe · sicher & verschlüsselt</div>
+    </div>
+    <!-- Driver sees: waiting for payment -->
+    <div id="active-ride-driver-actions" style="display: none;">
+      <div style="padding: 14px; background: #fef3c7; border-radius: 10px; font-size: 13px; color: #92400e;">
+        ⏳ Warte auf Ankunft und Bezahlung des Mitfahrers...
+      </div>
+    </div>
+    <!-- Both: cancel option -->
+    <button style="margin-top: 12px; padding: 10px; background: none; border: 1px solid #e5e7eb; border-radius: 8px; color: #666; font-size: 13px; cursor: pointer; width: 100%; font-family: inherit;" onclick="cancelActiveRide()">
+      Fahrt abbrechen
+    </button>
+  </div>
+</div>
+
+<!-- Payment Success Modal -->
+<div class="modal-overlay" id="payment-success-modal">
+  <div class="modal-content" style="text-align: center; padding: 32px 24px;">
+    <div style="font-size: 56px; margin-bottom: 16px;">✅</div>
+    <div class="modal-header">Bezahlung erfolgreich!</div>
+    <div style="font-size: 14px; color: #666; margin: 12px 0 20px;">
+      <span id="payment-amount-display">0,00€</span> wurde bezahlt.
+      <br>Danke fürs Mitfahren!
+    </div>
+    <div style="padding: 12px; background: var(--green-50); border-radius: 10px; margin-bottom: 20px; text-align: left;">
+      <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px;">
+        <span>Fahrpreis</span><span id="receipt-base">0,00€</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px;">
+        <span>Huckepack-Gebühr (2,5%)</span><span id="receipt-fee">0,00€</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 700; padding-top: 6px; border-top: 1px solid var(--green-200);">
+        <span>Gesamt</span><span id="receipt-total">0,00€</span>
+      </div>
+    </div>
+    <button class="ride-create-btn" onclick="closePaymentSuccess()">🏠 Zurück zur Startseite</button>
   </div>
 </div>
 
@@ -1317,6 +1448,270 @@ const appConfig = {
   platformFeeRider: 2.5,
   platformFeeDriver: 2.5,
 };
+
+// ===== PRICING CONFIG =====
+const pricingConfig = {
+  perKmFirst10: 0.20,   // €/km for first 10 km
+  perKmAfter10: 0.10,   // €/km after 10 km
+  minimumPrice: 0.50,   // Minimum base price
+  riderFeePercent: 2.5,  // Rider pays this % extra
+  driverFeePercent: 2.5, // Driver gets this % less
+};
+
+// Calculate base price from distance in km
+function calculateBasePrice(distanceKm) {
+  let price = 0;
+  if (distanceKm <= 10) {
+    price = distanceKm * pricingConfig.perKmFirst10;
+  } else {
+    price = (10 * pricingConfig.perKmFirst10) + ((distanceKm - 10) * pricingConfig.perKmAfter10);
+  }
+  return Math.max(price, pricingConfig.minimumPrice);
+}
+
+// Calculate what rider pays (base + 2.5% fee)
+function calculateRiderPrice(basePrice) {
+  return basePrice * (1 + pricingConfig.riderFeePercent / 100);
+}
+
+// Calculate what driver gets (base - 2.5% fee)
+function calculateDriverPayout(basePrice) {
+  return basePrice * (1 - pricingConfig.driverFeePercent / 100);
+}
+
+// Full price breakdown for a given distance
+function getPriceBreakdown(distanceKm) {
+  const base = calculateBasePrice(distanceKm);
+  const riderPays = calculateRiderPrice(base);
+  const driverGets = calculateDriverPayout(base);
+  const totalFee = riderPays - driverGets;
+  return {
+    distanceKm: Math.round(distanceKm * 10) / 10,
+    basePrice: Math.round(base * 100) / 100,
+    riderPays: Math.round(riderPays * 100) / 100,
+    driverGets: Math.round(driverGets * 100) / 100,
+    platformFee: Math.round(totalFee * 100) / 100,
+  };
+}
+
+// Estimate distance between two points (Haversine formula)
+function haversineDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371; // Earth radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+// Simple geocoding for Munich districts (for distance estimation)
+const munichDistricts = {
+  'schwabing': { lat: 48.1651, lng: 11.5753 },
+  'maxvorstadt': { lat: 48.1530, lng: 11.5660 },
+  'marienplatz': { lat: 48.1374, lng: 11.5755 },
+  'sendling': { lat: 48.1180, lng: 11.5510 },
+  'giesing': { lat: 48.1090, lng: 11.5830 },
+  'haidhausen': { lat: 48.1290, lng: 11.5990 },
+  'bogenhausen': { lat: 48.1520, lng: 11.6120 },
+  'pasing': { lat: 48.1420, lng: 11.4570 },
+  'laim': { lat: 48.1390, lng: 11.5020 },
+  'neuhausen': { lat: 48.1580, lng: 11.5380 },
+  'nymphenburg': { lat: 48.1590, lng: 11.5090 },
+  'moosach': { lat: 48.1810, lng: 11.5170 },
+  'milbertshofen': { lat: 48.1830, lng: 11.5630 },
+  'freimann': { lat: 48.1970, lng: 11.5840 },
+  'trudering': { lat: 48.1230, lng: 11.6540 },
+  'riem': { lat: 48.1300, lng: 11.6880 },
+  'berg am laim': { lat: 48.1270, lng: 11.6250 },
+  'au': { lat: 48.1240, lng: 11.5870 },
+  'lehel': { lat: 48.1430, lng: 11.5890 },
+  'isarvorstadt': { lat: 48.1260, lng: 11.5690 },
+  'westpark': { lat: 48.1200, lng: 11.5200 },
+  'hauptbahnhof': { lat: 48.1402, lng: 11.5600 },
+  'ostbahnhof': { lat: 48.1276, lng: 11.6032 },
+  'münchner freiheit': { lat: 48.1621, lng: 11.5860 },
+  'garching': { lat: 48.2490, lng: 11.6510 },
+  'unterföhring': { lat: 48.1920, lng: 11.6430 },
+  'thalkirchen': { lat: 48.1050, lng: 11.5540 },
+  'obersendling': { lat: 48.1010, lng: 11.5410 },
+  'solln': { lat: 48.0860, lng: 11.5310 },
+};
+
+// Try to get coordinates from a location string
+function getLocationCoords(locationStr) {
+  const lower = locationStr.toLowerCase().trim();
+  // Direct match
+  if (munichDistricts[lower]) return munichDistricts[lower];
+  // Partial match
+  for (const [name, coords] of Object.entries(munichDistricts)) {
+    if (lower.includes(name) || name.includes(lower)) return coords;
+  }
+  return null;
+}
+
+// Estimate distance between two location strings
+function estimateDistance(startStr, destStr) {
+  const startCoords = getLocationCoords(startStr);
+  const destCoords = getLocationCoords(destStr);
+  if (startCoords && destCoords) {
+    // Multiply by 1.3 for street routing factor
+    return haversineDistance(startCoords.lat, startCoords.lng, destCoords.lat, destCoords.lng) * 1.3;
+  }
+  // Default: assume 5 km if we can't determine
+  return 5;
+}
+
+// Update price preview in offer modal
+function updateOfferPricePreview() {
+  const start = document.getElementById('offer-start').value;
+  const dest = document.getElementById('offer-dest').value;
+  const preview = document.getElementById('offer-price-preview');
+  if (start && dest && start.length > 2 && dest.length > 2) {
+    const dist = estimateDistance(start, dest);
+    const breakdown = getPriceBreakdown(dist);
+    document.getElementById('offer-est-km').textContent = breakdown.distanceKm;
+    document.getElementById('offer-base-price').textContent = breakdown.basePrice.toFixed(2);
+    document.getElementById('offer-driver-gets').textContent = breakdown.driverGets.toFixed(2) + '€';
+    preview.style.display = 'block';
+  } else {
+    preview.style.display = 'none';
+  }
+}
+
+// Update price preview in search modal
+function updateSearchPricePreview() {
+  const start = document.getElementById('search-start').value;
+  const dest = document.getElementById('search-dest').value;
+  const preview = document.getElementById('search-price-preview');
+  if (start && dest && start.length > 2 && dest.length > 2) {
+    const dist = estimateDistance(start, dest);
+    const breakdown = getPriceBreakdown(dist);
+    document.getElementById('search-est-km').textContent = breakdown.distanceKm;
+    document.getElementById('search-rider-pays').textContent = breakdown.riderPays.toFixed(2) + '€';
+    preview.style.display = 'block';
+  } else {
+    preview.style.display = 'none';
+  }
+}
+
+// Active ride state
+let activeRide = null;
+
+// Show active ride screen
+function showActiveRide(rideData, isDriver) {
+  activeRide = { ...rideData, isDriver };
+  const breakdown = getPriceBreakdown(rideData.distanceKm || 5);
+
+  document.getElementById('active-ride-route').textContent = rideData.start + ' → ' + rideData.destination;
+  document.getElementById('active-ride-partner').textContent = rideData.partnerName || 'Unbekannt';
+  document.getElementById('active-ride-distance').textContent = (rideData.distanceKm || 5).toFixed(1) + ' km';
+
+  if (isDriver) {
+    document.getElementById('active-ride-price-label').textContent = 'Du erhältst';
+    document.getElementById('active-ride-price').textContent = breakdown.driverGets.toFixed(2) + '€';
+    document.getElementById('active-ride-driver-actions').style.display = 'block';
+    document.getElementById('active-ride-rider-actions').style.display = 'none';
+  } else {
+    document.getElementById('active-ride-price-label').textContent = 'Du zahlst';
+    document.getElementById('active-ride-price').textContent = breakdown.riderPays.toFixed(2) + '€';
+    document.getElementById('active-ride-rider-actions').style.display = 'block';
+    document.getElementById('active-ride-driver-actions').style.display = 'none';
+    document.getElementById('pay-ride-btn').classList.add('ready');
+  }
+
+  activeRide.breakdown = breakdown;
+  document.getElementById('active-ride-modal').classList.add('active');
+}
+
+// Complete ride and trigger payment (Stripe Checkout)
+async function completeRideAndPay() {
+  if (!activeRide || !activeRide.breakdown) return;
+
+  const btn = document.getElementById('pay-ride-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Verarbeite Zahlung...';
+
+  const breakdown = activeRide.breakdown;
+
+  try {
+    // Save payment record to Firestore
+    const paymentRef = await db.collection('payments').add({
+      rideId: activeRide.rideId,
+      riderId: auth.currentUser.uid,
+      riderName: userData.name,
+      driverId: activeRide.driverUserId || '',
+      driverName: activeRide.partnerName || '',
+      basePrice: breakdown.basePrice,
+      riderPays: breakdown.riderPays,
+      driverGets: breakdown.driverGets,
+      platformFee: breakdown.platformFee,
+      distanceKm: breakdown.distanceKm,
+      status: 'completed', // In production: 'pending' until Stripe confirms
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    // Update ride status to completed
+    if (activeRide.rideId) {
+      await db.collection('rides').doc(activeRide.rideId).update({
+        status: 'completed',
+        paymentId: paymentRef.id,
+        completedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }
+
+    // Update user stats
+    userData.trips++;
+    userData.co2Saved = (userData.co2Saved || 0) + Math.round(breakdown.distanceKm * 0.12 * 100) / 100;
+    await saveUserToFirestore();
+
+    // Show success
+    document.getElementById('payment-amount-display').textContent = breakdown.riderPays.toFixed(2) + '€';
+    document.getElementById('receipt-base').textContent = breakdown.basePrice.toFixed(2) + '€';
+    document.getElementById('receipt-fee').textContent = (breakdown.riderPays - breakdown.basePrice).toFixed(2) + '€';
+    document.getElementById('receipt-total').textContent = breakdown.riderPays.toFixed(2) + '€';
+
+    document.getElementById('active-ride-modal').classList.remove('active');
+    document.getElementById('payment-success-modal').classList.add('active');
+
+  } catch (e) {
+    alert('Fehler bei Zahlung: ' + e.message);
+    console.error(e);
+    btn.disabled = false;
+    btn.textContent = '💳 Angekommen — Jetzt bezahlen';
+  }
+}
+
+function closePaymentSuccess() {
+  document.getElementById('payment-success-modal').classList.remove('active');
+  activeRide = null;
+  updateUIWithUserData();
+  showScreen('home');
+  loadAvailableRides();
+}
+
+function cancelActiveRide() {
+  if (confirm('Fahrt wirklich abbrechen?')) {
+    if (activeRide && activeRide.rideId && db) {
+      db.collection('rides').doc(activeRide.rideId).update({ status: 'cancelled' });
+    }
+    document.getElementById('active-ride-modal').classList.remove('active');
+    activeRide = null;
+    loadAvailableRides();
+  }
+}
+
+// Attach price preview listeners after DOM load
+document.addEventListener('DOMContentLoaded', function() {
+  const offerStart = document.getElementById('offer-start');
+  const offerDest = document.getElementById('offer-dest');
+  const searchStart = document.getElementById('search-start');
+  const searchDest = document.getElementById('search-dest');
+  if (offerStart) offerStart.addEventListener('input', updateOfferPricePreview);
+  if (offerDest) offerDest.addEventListener('input', updateOfferPricePreview);
+  if (searchStart) searchStart.addEventListener('input', updateSearchPricePreview);
+  if (searchDest) searchDest.addEventListener('input', updateSearchPricePreview);
+});
 
 // Auth state
 window.authState = {
@@ -1857,11 +2252,10 @@ function fetchRoute(lat1, lon1, lat2, lon2, callback) {
 }
 
 // ===== FAHRPREIS-BERECHNUNG MIT PLATTFORMGEBÜHR =====
+// Legacy wrapper for compatibility — uses new pricing system
 function calculateRideFare(distanceKm) {
-  const base = Math.max(0.50, Math.min(5.00, distanceKm * 0.20));
-  const riderPrice = parseFloat((base * (1 + appConfig.platformFeeRider / 100)).toFixed(2));
-  const driverEarnings = parseFloat((base * (1 - appConfig.platformFeeDriver / 100)).toFixed(2));
-  return { base, riderPrice, driverEarnings };
+  const bd = getPriceBreakdown(distanceKm);
+  return { base: bd.basePrice, riderPrice: bd.riderPays, driverEarnings: bd.driverGets };
 }
 
 // ===== MATCHING-LOGIK (2-Check-Algorithmus) =====
@@ -1893,15 +2287,7 @@ const demoDriverRoutes = [
   { driverIdx: 2, route: [{lat:48.1450,lng:11.5300},{lat:48.1400,lng:11.5500},{lat:48.1351,lng:11.5820},{lat:48.1300,lng:11.6100},{lat:48.1200,lng:11.6300}] },
 ];
 
-function haversineDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLon/2) * Math.sin(dLon/2);
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-}
+// haversineDistance is defined in pricing section above
 
 function simulateMatch(destPos) {
   const distKm = haversineDistance(userPos.lat, userPos.lng, destPos.lat, destPos.lng);
@@ -2128,7 +2514,8 @@ async function createPlannedRide() {
         departureTime: firebase.firestore.FieldValue.serverTimestamp(),
         seats: parseInt(seats),
         status: 'active',
-        price: 0,
+        distanceKm: estimateDistance(start, dest),
+        price: calculateBasePrice(estimateDistance(start, dest)),
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
     } catch (e) {
@@ -2226,25 +2613,31 @@ function createAvailableRideCard(ride, rideId) {
   const card = document.createElement('div');
   card.className = 'available-ride-card fade-in';
 
-  const distKm = haversineDistance(userPos.lat, userPos.lng,
-    ride.startCoords.lat || ride.startCoords._latitude,
-    ride.startCoords.lng || ride.startCoords._longitude);
-  const fare = calculateRideFare(distKm);
-  const displayPrice = appMode === 'walker' ? fare.riderPrice : fare.driverEarnings;
+  // Use stored distance or estimate from location names
+  const distKm = ride.distanceKm || estimateDistance(ride.start, ride.destination);
+  const breakdown = getPriceBreakdown(distKm);
+  const displayPrice = appMode === 'walker' ? breakdown.riderPays : breakdown.driverGets;
+  const priceLabel = appMode === 'walker' ? 'Du zahlst' : 'Du erhältst';
 
-  const depTime = new Date(ride.departureTime.toDate ? ride.departureTime.toDate() : ride.departureTime);
-  const timeStr = depTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+  let timeStr = '';
+  try {
+    const depTime = new Date(ride.departureTime.toDate ? ride.departureTime.toDate() : ride.departureTime);
+    timeStr = depTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+  } catch(e) { timeStr = 'Jetzt'; }
 
   card.innerHTML = `
     <div class="available-ride-header">
       <div>
         <div class="available-ride-route">${ride.start} → ${ride.destination}</div>
-        <div class="available-ride-time">${timeStr} • ${ride.seats} Plätze</div>
+        <div class="available-ride-time">${timeStr} • ${ride.seats || 1} Plätze • ~${distKm.toFixed(1)} km</div>
         <div class="available-ride-driver">${ride.userName} • ⭐ ${ride.userRating || 0}</div>
       </div>
-      <div class="available-ride-price">${displayPrice.toFixed(2)}€</div>
+      <div style="text-align: right;">
+        <div class="available-ride-price">${displayPrice.toFixed(2)}€</div>
+        <div class="available-ride-fee">${priceLabel}</div>
+      </div>
     </div>
-    <button class="ride-request-btn" onclick="requestRideOffer('${rideId}')">${appMode === 'walker' ? '📍 Anfragen' : '✓ Annehmen'}</button>
+    <button class="ride-request-btn" onclick="matchRide('${rideId}')">${appMode === 'walker' ? '📍 Mitfahren' : '✓ Annehmen'}</button>
   `;
 
   return card;
@@ -2299,7 +2692,8 @@ async function submitOfferRide() {
       seats: seats,
       car: userData.car,
       status: 'active',
-      price: 0, // Will be calculated by riders
+      distanceKm: estimateDistance(start, dest),
+      price: calculateBasePrice(estimateDistance(start, dest)),
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
@@ -2362,7 +2756,8 @@ async function submitSearchRide() {
       departureTime: firebase.firestore.FieldValue.serverTimestamp(),
       seats: 1,
       status: 'active',
-      price: 0,
+      distanceKm: estimateDistance(start, dest),
+      price: calculateBasePrice(estimateDistance(start, dest)),
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
@@ -2379,46 +2774,39 @@ async function submitSearchRide() {
   }
 }
 
-// Request a ride offer (rider requests to join driver's offer)
-async function requestRideOffer(rideId) {
+// Match a ride — both rider and driver use this
+async function matchRide(rideId) {
   if (!db || !auth || !auth.currentUser) {
     alert('Nicht angemeldet');
     return;
   }
 
   try {
+    const rideDoc = await db.collection('rides').doc(rideId).get();
+    if (!rideDoc.exists) { alert('Fahrt nicht mehr verfügbar'); return; }
+    const ride = rideDoc.data();
+
     // Update the ride status to matched
     await db.collection('rides').doc(rideId).update({
       status: 'matched',
-      matchedWith: auth.currentUser.uid
+      matchedWith: auth.currentUser.uid,
+      matchedName: userData.name || 'Unbekannt',
+      matchedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
-    alert('Fahrt gebucht! Der Fahrer wird benachrichtigt.');
-    userData.trips++;
-    updateUIWithUserData();
-    loadAvailableRides();
-  } catch (e) {
-    alert('Fehler: ' + e.message);
-    console.error(e);
-  }
-}
+    // Determine distance and show active ride screen
+    const distKm = ride.distanceKm || estimateDistance(ride.start, ride.destination);
+    const isDriver = (appMode === 'driver');
 
-// Accept a ride request (driver accepts rider's request)
-async function acceptRideRequest(rideId) {
-  if (!db || !auth || !auth.currentUser) {
-    alert('Nicht angemeldet');
-    return;
-  }
+    showActiveRide({
+      rideId: rideId,
+      start: ride.start,
+      destination: ride.destination,
+      distanceKm: distKm,
+      partnerName: ride.userName,
+      driverUserId: isDriver ? auth.currentUser.uid : ride.userId,
+    }, isDriver);
 
-  try {
-    await db.collection('rides').doc(rideId).update({
-      status: 'matched',
-      matchedWith: auth.currentUser.uid
-    });
-
-    alert('Anfrage angenommen!');
-    userData.trips++;
-    updateUIWithUserData();
     loadAvailableRides();
   } catch (e) {
     alert('Fehler: ' + e.message);
