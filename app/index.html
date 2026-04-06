@@ -837,6 +837,15 @@
         <span class="profile-section-item-arrow">›</span>
       </div>
     </div>
+    <div class="profile-section" style="margin-top: 8px;">
+      <div class="profile-section-item" onclick="logoutUser()" style="cursor: pointer;">
+        <span class="profile-section-item-icon">🚪</span>
+        <span class="profile-section-item-text">
+          <div class="profile-section-item-label" style="color: #ef4444; font-weight: 600;">Abmelden</div>
+        </span>
+        <span class="profile-section-item-arrow" style="color: #ef4444;">›</span>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1231,6 +1240,29 @@ async function loadUserFromFirestore() {
   } catch (e) {
     console.error('Firestore Laden fehlgeschlagen:', e);
     return false;
+  }
+}
+
+async function logoutUser() {
+  try {
+    if (auth) await auth.signOut();
+    // Reset user data
+    userData.name = '';
+    userData.email = '';
+    userData.mode = 'walker';
+    userData.trips = 0;
+    userData.co2Saved = 0;
+    userData.rating = 0;
+    userData.car = { brand: '', model: '', color: '', plate: '', year: 0, seats: 4 };
+    // Reset auth state
+    window.authState.isLoggedIn = false;
+    window.authState.user = null;
+    window.authState.method = null;
+    // Go back to login
+    showScreen('login');
+    console.log('User abgemeldet');
+  } catch (e) {
+    console.error('Logout fehlgeschlagen:', e);
   }
 }
 
