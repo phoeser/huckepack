@@ -3231,10 +3231,13 @@ function performGeocoding(query, dropdownId) {
   const hasCityHint = /münchen|munich|muc/i.test(query);
   const searchQuery = hasCityHint ? query : query + ', München';
 
+  // Prüfe ob eine Hausnummer im Query ist (z.B. "Leopoldstraße 10", "Schillerstr. 42a")
+  const hasHouseNumber = /\d+[a-zA-Z]?\s*$/.test(query.trim()) || /\s\d+[a-zA-Z]?\b/.test(query);
+
   const params = new URLSearchParams({
     format: 'json',
     q: searchQuery,
-    limit: '6',
+    limit: hasHouseNumber ? '8' : '6',
     countrycodes: 'de',
     viewbox: MUNICH_VIEWBOX,
     bounded: '0',
@@ -3242,15 +3245,40 @@ function performGeocoding(query, dropdownId) {
     'accept-language': 'de'
   });
 
+  // Bei Hausnummern: strukturierte Suche zusätzlich nutzen
+  if (hasHouseNumber) {
+    // Extrahiere Straße und Hausnummer
+    const match = query.trim().match(/^(.+?)\s+(\d+[a-zA-Z]?)$/);
+    if (match) {
+      params.set('street', match[2] + ' ' + match[1]);
+      params.set('city', 'München');
+      params.delete('q');
+    }
+  }
+
   fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
     headers: { 'User-Agent': 'Huckepack/1.0' }
   })
     .then(r => r.json())
     .then(results => {
+      // Fallback: wenn strukturierte Suche keine Ergebnisse bringt, normale Suche
+      if (results.length === 0 && !params.has('q')) {
+        const fallbackQuery = hasCityHint ? query : query + ', München';
+        const fallbackParams = new URLSearchParams({
+          format: 'json', q: fallbackQuery, limit: '6', countrycodes: 'de',
+          viewbox: MUNICH_VIEWBOX, bounded: '0', addressdetails: '1', 'accept-language': 'de'
+        });
+        return fetch(`https://nominatim.openstreetmap.org/search?${fallbackParams}`, {
+          headers: { 'User-Agent': 'Huckepack/1.0' }
+        }).then(r => r.json());
+      }
+      return results;
+    })
+    .then(results => {
       const dropdown = document.getElementById(dropdownId);
       dropdown.innerHTML = '';
 
-      if (results.length === 0) {
+      if (!results || results.length === 0) {
         const empty = document.createElement('div');
         empty.className = 'geocoding-item';
         empty.innerHTML = '<span class="geo-icon">🔍</span><div class="geo-text"><div class="geo-main" style="color:#9ca3af;">Keine Ergebnisse gefunden</div><div class="geo-sub">Versuch es mit einer genaueren Adresse</div></div>';
