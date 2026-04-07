@@ -2329,8 +2329,8 @@ async function completeRideAndPay() {
       }
     }
 
-    // Fallback: Direct completion without Stripe (for testing / before Stripe setup)
-    // Update ride status to completed
+    // Direkte Abwicklung (Stripe Payment Intent wird später per Cloud Function ergänzt)
+    // Update ride status
     if (activeRide.rideId) {
       await db.collection('rides').doc(activeRide.rideId).update({
         status: 'completed',
@@ -2339,10 +2339,33 @@ async function completeRideAndPay() {
       });
     }
 
-    // Update user stats
+    // Update payment record with completion
+    await db.collection('payments').doc(paymentRef.id).update({
+      status: 'completed',
+      completedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      method: stripe && stripeConfig.publishableKey ? 'stripe_pending' : 'simulated'
+    });
+
+    // Update rider stats
     userData.trips++;
     userData.co2Saved = (userData.co2Saved || 0) + Math.round(breakdown.distanceKm * 0.12 * 100) / 100;
+    userData.totalCost = (userData.totalCost || 0) + breakdown.riderPays;
     await saveUserToFirestore();
+
+    // Update driver stats (if we know driverId)
+    if (activeRide.driverUserId) {
+      try {
+        const driverDoc = await db.collection('users').doc(activeRide.driverUserId).get();
+        if (driverDoc.exists) {
+          const driverData = driverDoc.data();
+          await db.collection('users').doc(activeRide.driverUserId).update({
+            trips: (driverData.trips || 0) + 1,
+            totalEarnings: (driverData.totalEarnings || 0) + breakdown.driverGets,
+            co2Saved: (driverData.co2Saved || 0) + Math.round(breakdown.distanceKm * 0.12 * 100) / 100
+          });
+        }
+      } catch (e) { console.log('Driver stats update failed:', e); }
+    }
 
     // Show success
     document.getElementById('payment-amount-display').textContent = breakdown.riderPays.toFixed(2) + '€';
