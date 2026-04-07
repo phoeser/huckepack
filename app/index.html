@@ -1780,7 +1780,7 @@
     <div id="active-ride-info" style="text-align: left; margin: 16px 0;">
       <div style="padding: 12px; background: var(--green-50); border-radius: 10px; margin-bottom: 12px;">
         <div style="font-size: 13px; color: #666;">Route</div>
-        <div style="font-weight: 600;" id="active-ride-route">— → —</div>
+        <div style="font-weight: 600;" id="active-ride-modal-route">— → —</div>
       </div>
       <div style="padding: 12px; background: var(--green-50); border-radius: 10px; margin-bottom: 12px;">
         <div style="font-size: 13px; color: #666;">Mitfahrer / Fahrer</div>
@@ -1811,7 +1811,7 @@
       </div>
     </div>
     <!-- Both: cancel option -->
-    <button style="margin-top: 12px; padding: 10px; background: none; border: 1px solid #e5e7eb; border-radius: 8px; color: #666; font-size: 13px; cursor: pointer; width: 100%; font-family: inherit;" onclick="cancelActiveRide()">
+    <button style="margin-top: 12px; padding: 10px; background: none; border: 1px solid #e5e7eb; border-radius: 8px; color: #666; font-size: 13px; cursor: pointer; width: 100%; font-family: inherit;" onclick="cancelActiveRideModal()">
       Fahrt abbrechen
     </button>
   </div>
@@ -2206,7 +2206,7 @@ function showActiveRide(rideData, isDriver) {
   activeRide = { ...rideData, isDriver };
   const breakdown = getPriceBreakdown(rideData.distanceKm || 5);
 
-  document.getElementById('active-ride-route').textContent = rideData.start + ' → ' + rideData.destination;
+  document.getElementById('active-ride-modal-route').textContent = rideData.start + ' → ' + rideData.destination;
   document.getElementById('active-ride-partner').textContent = rideData.partnerName || 'Unbekannt';
   document.getElementById('active-ride-distance').textContent = (rideData.distanceKm || 5).toFixed(1) + ' km';
 
@@ -2320,7 +2320,7 @@ function closePaymentSuccess() {
   loadAvailableRides();
 }
 
-function cancelActiveRide() {
+function cancelActiveRideModal() {
   if (confirm('Fahrt wirklich abbrechen?')) {
     if (activeRide && activeRide.rideId && db) {
       db.collection('rides').doc(activeRide.rideId).update({ status: 'cancelled' });
@@ -3559,8 +3559,11 @@ function createAvailableRideCard(ride, rideId) {
 // Modal functions for offer ride
 function openOfferRideModal() {
   document.getElementById('offer-ride-modal').classList.add('active');
-  const now = new Date().toISOString().slice(0, 16);
-  document.getElementById('offer-time').value = now;
+  // Reset fields
+  document.getElementById('offer-dest').value = '';
+  window._offerDestCoords = null;
+  const preview = document.getElementById('offer-price-preview');
+  if (preview) preview.style.display = 'none';
 }
 
 function closeOfferRideModal() {
@@ -3633,6 +3636,7 @@ async function submitOfferRide() {
     // Store active driver ride
     window.activeDriverRide = rideRef.id;
     window.activeDriverRideExpiresAt = expiresAt;
+    window._activeDriverDestCoords = destCoordsForUpdate || null;
 
     // Start auto-expiration check
     startRideExpirationCheck(rideRef.id, expiresAt);
@@ -3666,8 +3670,6 @@ async function submitOfferRide() {
 // Modal functions for search ride
 function openSearchRideModal() {
   document.getElementById('search-ride-modal').classList.add('active');
-  const now = new Date().toISOString().slice(0, 16);
-  document.getElementById('search-time').value = now;
   // Wenn auf der Karte bereits ein Ziel gewählt wurde, übernehmen
   if (destPos && document.getElementById('map-dest').value) {
     document.getElementById('search-dest').value = document.getElementById('map-dest').value;
@@ -3794,13 +3796,12 @@ async function matchRide(rideId) {
     if (!rideDoc.exists) { alert('Fahrt nicht mehr verfügbar'); return; }
     const ride = rideDoc.data();
 
-    const isDriver = (ride.type === 'offer');
-    const isRider = (ride.type === 'request');
+    const isRiderRequest = (ride.type === 'request');
+    const isDriverOffer = (ride.type === 'offer');
 
     // If driver accepts a rider request: update BOTH documents
-    if (isDriver && appMode === 'driver') {
-      // This is a rider's request document
-      // Update the request to matched
+    if (isRiderRequest && appMode === 'driver') {
+      // This is a rider's request document — driver accepts it
       await db.collection('rides').doc(rideId).update({
         status: 'matched',
         matchedWith: auth.currentUser.uid,
@@ -3843,8 +3844,8 @@ async function matchRide(rideId) {
       destination: ride.destination,
       distanceKm: distKm,
       partnerName: ride.userName,
-      driverUserId: isDriver ? ride.userId : auth.currentUser.uid,
-    }, isRider);
+      driverUserId: isDriverOffer ? ride.userId : auth.currentUser.uid,
+    }, appMode === 'driver');
 
     // Match gefunden — Fahrtsuche-Anzeige deaktivieren
     if (activeSearchRideId === rideId || ride.userId === (auth.currentUser && auth.currentUser.uid)) {
@@ -3927,6 +3928,7 @@ async function cancelActiveRide(autoExpired = false) {
 
     window.activeDriverRide = null;
     window.activeDriverRideExpiresAt = null;
+    window._activeDriverDestCoords = null;
 
     const banner = document.getElementById('active-ride-banner');
     if (banner) banner.style.display = 'none';
@@ -3977,14 +3979,31 @@ function setupDriverRequestsListener(driverRideId) {
 // Check if rider's route overlaps with driver's route
 function routeOverlaps(riderRide) {
   if (!window.activeDriverRide) return false;
-  // Simple overlap check: if both have start and dest within reasonable distance
-  // Using the existing pointToSegmentDist logic would go here
-  // For now, using a simple distance threshold
-  const riderStart = riderRide.startCoords;
-  const riderDest = riderRide.destCoords;
+  if (!riderRide.startCoords || !riderRide.destCoords) return false;
 
-  // This is a simplified check — in production would use actual route matching
-  return true; // Accept all for now (existing matching logic handles it)
+  // Rider start/dest coordinates
+  const riderStartLat = riderRide.startCoords.latitude || riderRide.startCoords._lat;
+  const riderStartLng = riderRide.startCoords.longitude || riderRide.startCoords._long;
+  const riderDestLat = riderRide.destCoords.latitude || riderRide.destCoords._lat;
+  const riderDestLng = riderRide.destCoords.longitude || riderRide.destCoords._long;
+
+  if (!riderStartLat || !riderDestLat) return false;
+
+  // Driver position and destination (from active ride)
+  const driverStartLat = userPos.lat;
+  const driverStartLng = userPos.lng;
+
+  // Check if rider start is within 2km of driver start
+  const startDist = haversineDistance(riderStartLat, riderStartLng, driverStartLat, driverStartLng);
+  if (startDist > 2) return false; // More than 2km apart at start
+
+  // Check if destinations are roughly in same direction (within 3km)
+  if (window._activeDriverDestCoords) {
+    const destDist = haversineDistance(riderDestLat, riderDestLng, window._activeDriverDestCoords.lat, window._activeDriverDestCoords.lng);
+    if (destDist > 3) return false; // Destinations more than 3km apart
+  }
+
+  return true;
 }
 
 // Display rider requests on driver screen
