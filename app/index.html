@@ -94,6 +94,26 @@
     cursor: pointer; font-family: inherit; margin-top: 16px;
   }
   .login-form.hidden { display: none; }
+  .login-forgot { background: none; border: none; color: rgba(255,255,255,0.5); font-size: 13px; cursor: pointer; font-family: inherit; margin-top: -4px; margin-bottom: 12px; text-align: right; display: block; width: 100%; }
+  .login-forgot:hover { color: #fff; }
+  .login-success-msg { background: rgba(34,197,94,0.2); color: #bbf7d0; padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 12px; display: none; text-align: center; }
+  .login-success-msg.visible { display: block; }
+  .verification-banner { background: linear-gradient(135deg, #fef3c7, #fde68a); color: #92400e; padding: 12px 16px; border-radius: 12px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; font-size: 13px; line-height: 1.4; }
+  .verification-banner .vb-icon { font-size: 20px; flex-shrink: 0; }
+  .verification-banner .vb-text { flex: 1; }
+  .verification-banner .vb-resend { background: #92400e; color: #fef3c7; border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap; }
+  .verification-banner .vb-close { background: none; border: none; color: #92400e; font-size: 18px; cursor: pointer; padding: 0 4px; }
+  .profile-edit-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9999; display: none; align-items: center; justify-content: center; padding: 20px; }
+  .profile-edit-modal.active { display: flex; }
+  .profile-edit-card { background: #fff; border-radius: 16px; padding: 24px; width: 100%; max-width: 380px; }
+  .profile-edit-card h3 { font-size: 18px; margin-bottom: 16px; color: #0f172a; }
+  .profile-edit-card .pe-input { width: 100%; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 8px; font-family: inherit; font-size: 14px; margin-bottom: 12px; box-sizing: border-box; }
+  .profile-edit-card .pe-input:focus { outline: none; border-color: #22c55e; }
+  .profile-edit-card .pe-btn { width: 100%; padding: 12px; background: #22c55e; color: #fff; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; margin-bottom: 8px; }
+  .profile-edit-card .pe-btn:active { background: #16a34a; }
+  .profile-edit-card .pe-btn-cancel { width: 100%; padding: 10px; background: none; color: #666; border: 1px solid #e5e7eb; border-radius: 10px; font-size: 14px; cursor: pointer; font-family: inherit; }
+  .profile-edit-card .pe-error { color: #dc2626; font-size: 12px; margin-bottom: 8px; display: none; }
+  .profile-edit-card .pe-success { color: #16a34a; font-size: 12px; margin-bottom: 8px; display: none; }
 
   /* ===== SPLASH ===== */
   #splash {
@@ -767,6 +787,8 @@
       <div class="login-divider">oder</div>
       <input type="email" class="login-input" placeholder="Email-Adresse" id="login-email">
       <input type="password" class="login-input" placeholder="Passwort" id="login-password">
+      <button class="login-forgot" onclick="forgotPassword()">Passwort vergessen?</button>
+      <div class="login-success-msg" id="forgot-success-msg"></div>
       <button class="login-submit" onclick="proceedFromLogin('email')">Anmelden</button>
     </div>
 
@@ -893,6 +915,14 @@
       <div class="greeting">Hallo, <span id="user-greeting-name">Paul</span> 👋</div>
     </div>
     <div class="avatar" id="home-avatar" onclick="showScreen('profile-screen')">P</div>
+  </div>
+
+  <!-- E-Mail Verification Banner -->
+  <div class="verification-banner" id="verification-banner" style="display: none;">
+    <span class="vb-icon">📧</span>
+    <span class="vb-text">Bitte bestätige deine E-Mail-Adresse. Prüfe deinen Posteingang.</span>
+    <button class="vb-resend" onclick="resendVerificationEmail()">Erneut senden</button>
+    <button class="vb-close" onclick="hideVerificationBanner()">×</button>
   </div>
 
   <!-- Mode Selection -->
@@ -1087,7 +1117,34 @@
   </div>
 
   <div class="profile-sections">
+    <!-- Persönliche Daten -->
     <div class="profile-section">
+      <div class="profile-section-item" onclick="openEditProfile()" style="cursor:pointer;">
+        <span class="profile-section-item-icon">👤</span>
+        <div class="profile-section-item-text">
+          <div class="profile-section-item-label">Persönliche Daten</div>
+          <div class="profile-section-item-value" id="profile-info-summary">Name, Modus</div>
+        </div>
+        <span class="profile-section-item-arrow">›</span>
+      </div>
+      <div class="profile-section-item" onclick="openEditCar()" style="cursor:pointer;">
+        <span class="profile-section-item-icon">🚗</span>
+        <div class="profile-section-item-text">
+          <div class="profile-section-item-label">Fahrzeug</div>
+          <div class="profile-section-item-value" id="profile-car-summary">Nicht angegeben</div>
+        </div>
+        <span class="profile-section-item-arrow">›</span>
+      </div>
+    </div>
+    <!-- Konto & Sicherheit -->
+    <div class="profile-section">
+      <div class="profile-section-item" onclick="openChangePassword()" style="cursor:pointer;">
+        <span class="profile-section-item-icon">🔑</span>
+        <div class="profile-section-item-text">
+          <div class="profile-section-item-label">Passwort ändern</div>
+        </div>
+        <span class="profile-section-item-arrow">›</span>
+      </div>
       <div class="profile-section-item">
         <span class="profile-section-item-icon">💳</span>
         <div class="profile-section-item-text">
@@ -1360,6 +1417,53 @@
   <button class="nav-btn" onclick="showScreen('map-screen')">🗺️</button>
   <button class="nav-btn" onclick="showScreen('driver-screen')">🚗</button>
   <button class="nav-btn" onclick="showScreen('profile-screen')">👤</button>
+</div>
+
+<!-- ===== PROFIL BEARBEITEN MODAL ===== -->
+<div class="profile-edit-modal" id="edit-profile-modal">
+  <div class="profile-edit-card">
+    <h3>Persönliche Daten</h3>
+    <input class="pe-input" id="edit-name" placeholder="Name">
+    <select class="pe-input" id="edit-mode" style="appearance: auto;">
+      <option value="walker">🚶 Mitfahrer</option>
+      <option value="driver">🚗 Fahrer</option>
+      <option value="both">🔄 Beides</option>
+    </select>
+    <div class="pe-error" id="edit-profile-error"></div>
+    <div class="pe-success" id="edit-profile-success"></div>
+    <button class="pe-btn" onclick="saveEditProfile()">Speichern</button>
+    <button class="pe-btn-cancel" onclick="closeEditProfile()">Abbrechen</button>
+  </div>
+</div>
+
+<!-- ===== AUTO BEARBEITEN MODAL ===== -->
+<div class="profile-edit-modal" id="edit-car-modal">
+  <div class="profile-edit-card">
+    <h3>Fahrzeug bearbeiten</h3>
+    <input class="pe-input" id="edit-car-brand" placeholder="Marke (z.B. BMW)">
+    <input class="pe-input" id="edit-car-model" placeholder="Modell (z.B. 3er)">
+    <input class="pe-input" id="edit-car-color" placeholder="Farbe (z.B. weiß)">
+    <input class="pe-input" id="edit-car-plate" placeholder="Kennzeichen (z.B. M-PH 2026)">
+    <input class="pe-input" id="edit-car-seats" type="number" min="1" max="8" placeholder="Freie Plätze">
+    <div class="pe-error" id="edit-car-error"></div>
+    <div class="pe-success" id="edit-car-success"></div>
+    <button class="pe-btn" onclick="saveEditCar()">Speichern</button>
+    <button class="pe-btn-cancel" onclick="closeEditCar()">Abbrechen</button>
+  </div>
+</div>
+
+<!-- ===== PASSWORT ÄNDERN MODAL ===== -->
+<div class="profile-edit-modal" id="change-password-modal">
+  <div class="profile-edit-card">
+    <h3>Passwort ändern</h3>
+    <input class="pe-input" id="pw-current" type="password" placeholder="Aktuelles Passwort">
+    <input class="pe-input" id="pw-new" type="password" placeholder="Neues Passwort">
+    <input class="pe-input" id="pw-confirm" type="password" placeholder="Neues Passwort bestätigen">
+    <div class="pe-error" id="change-pw-error"></div>
+    <div class="pe-success" id="change-pw-success"></div>
+    <button class="pe-btn" onclick="saveChangePassword()">Passwort ändern</button>
+    <button class="pe-btn-cancel" onclick="closeChangePassword()">Abbrechen</button>
+  </div>
 </div>
 
 <script>
@@ -1888,6 +1992,10 @@ async function proceedFromLogin(method) {
         window.authState.isLoggedIn = true;
         window.authState.method = 'email';
         afterLoginSuccess();
+        // Verifizierungs-Check nach Login
+        if (!result.user.emailVerified) {
+          setTimeout(() => showVerificationBanner(), 1500);
+        }
       } catch (e) {
         if (e.code === 'auth/user-not-found') showLoginError('Kein Konto mit dieser E-Mail gefunden.');
         else if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') showLoginError('Falsches Passwort.');
@@ -1910,11 +2018,15 @@ async function proceedFromLogin(method) {
       try {
         const result = await auth.createUserWithEmailAndPassword(email, password);
         await result.user.updateProfile({ displayName: name });
+        // E-Mail-Verifizierung senden
+        await result.user.sendEmailVerification();
         userData.name = name;
         userData.email = email;
         window.authState.isLoggedIn = true;
         window.authState.method = 'register';
         afterLoginSuccess();
+        // Hinweis auf Verifizierung zeigen
+        setTimeout(() => showVerificationBanner(), 1500);
       } catch (e) {
         if (e.code === 'auth/email-already-in-use') showLoginError('Diese E-Mail ist bereits registriert.');
         else if (e.code === 'auth/weak-password') showLoginError('Passwort ist zu schwach.');
@@ -2010,6 +2122,7 @@ async function loadUserFromFirestore() {
 
 async function logoutUser() {
   try {
+    stopAllLiveRideUpdates();
     if (auth) await auth.signOut();
     // Reset user data
     userData.name = '';
@@ -2137,6 +2250,9 @@ function updateUIWithUserData() {
     if (el('share-car-info')) el('share-car-info').textContent = userData.car.brand + ' ' + userData.car.model + ', ' + userData.car.color;
     if (el('share-license-plate')) el('share-license-plate').textContent = userData.car.plate;
   }
+
+  // Update profile summaries
+  if (typeof updateProfileSummaries === 'function') updateProfileSummaries();
 }
 
 // ===== SCREEN NAV =====
@@ -2698,7 +2814,10 @@ async function submitOfferRide() {
       ? new firebase.firestore.GeoPoint(window._offerDestCoords.lat, window._offerDestCoords.lng)
       : new firebase.firestore.GeoPoint(userPos.lat, userPos.lng);
 
-    await db.collection('rides').add({
+    const mapsLinkVal = document.getElementById('offer-maps-link').value || '';
+    const destCoordsForUpdate = window._offerDestCoords ? { lat: window._offerDestCoords.lat, lng: window._offerDestCoords.lng } : null;
+
+    const rideRef = await db.collection('rides').add({
       userId: userId,
       userName: userData.name || 'Unbekannt',
       userRating: userData.rating || 0,
@@ -2713,9 +2832,12 @@ async function submitOfferRide() {
       status: 'active',
       distanceKm: distKm,
       price: calculateBasePrice(distKm),
-      mapsLink: document.getElementById('offer-maps-link').value || '',
+      mapsLink: mapsLinkVal,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
+
+    // Start live updates for this ride
+    startLiveRideUpdate(rideRef.id, destCoordsForUpdate || { lat: userPos.lat, lng: userPos.lng });
 
     // Reset Maps link state
     window._offerDestCoords = null;
@@ -2768,7 +2890,7 @@ async function submitSearchRide() {
     const userId = auth.currentUser.uid;
     const distKm = estimateDistance(start, dest);
 
-    await db.collection('rides').add({
+    const searchRef = await db.collection('rides').add({
       userId: userId,
       userName: userData.name || 'Unbekannt',
       userRating: userData.rating || 0,
@@ -2784,6 +2906,9 @@ async function submitSearchRide() {
       price: calculateBasePrice(distKm),
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
+
+    // Start live updates for this search request
+    startLiveRideUpdate(searchRef.id, { lat: userPos.lat, lng: userPos.lng });
 
     alert('Fahrt gesucht! Du siehst jetzt verfügbare Angebote.');
     closeSearchRideModal();
@@ -2872,6 +2997,304 @@ window.setMode = function(mode) {
     showScreen('map-screen');
   }
 };
+
+// ===== LIVE RIDE UPDATE (alle 60s, Auto-Löschen bei <600m) =====
+let liveRideIntervals = {}; // rideId -> intervalId
+
+function startLiveRideUpdate(rideId, destCoords) {
+  // Stop any existing interval for this ride
+  if (liveRideIntervals[rideId]) clearInterval(liveRideIntervals[rideId]);
+
+  console.log('Live-Update gestartet für Ride:', rideId);
+
+  const intervalId = setInterval(async () => {
+    try {
+      if (!db || !auth || !auth.currentUser) {
+        stopLiveRideUpdate(rideId);
+        return;
+      }
+
+      // Check if ride still exists and is active
+      const rideDoc = await db.collection('rides').doc(rideId).get();
+      if (!rideDoc.exists || rideDoc.data().status !== 'active') {
+        console.log('Ride nicht mehr aktiv, stoppe Updates:', rideId);
+        stopLiveRideUpdate(rideId);
+        return;
+      }
+
+      // Calculate remaining distance to destination
+      const remainingKm = haversineDistance(userPos.lat, userPos.lng, destCoords.lat, destCoords.lng);
+      const remainingM = remainingKm * 1000;
+
+      console.log('Live-Update Ride ' + rideId + ': ' + remainingM.toFixed(0) + 'm zum Ziel');
+
+      // Auto-delete if within 600m of destination
+      if (remainingM < 600) {
+        console.log('< 600m zum Ziel — Fahrt wird automatisch gelöscht:', rideId);
+        await db.collection('rides').doc(rideId).update({
+          status: 'completed_auto',
+          completedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        stopLiveRideUpdate(rideId);
+        loadAvailableRides();
+        return;
+      }
+
+      // Update current position and remaining distance in Firestore
+      await db.collection('rides').doc(rideId).update({
+        startCoords: new firebase.firestore.GeoPoint(userPos.lat, userPos.lng),
+        distanceKm: remainingKm * 1.3, // factor for road vs straight line
+        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+    } catch (e) {
+      console.error('Live-Update Fehler:', e);
+    }
+  }, 60000); // alle 60 Sekunden
+
+  liveRideIntervals[rideId] = intervalId;
+}
+
+function stopLiveRideUpdate(rideId) {
+  if (liveRideIntervals[rideId]) {
+    clearInterval(liveRideIntervals[rideId]);
+    delete liveRideIntervals[rideId];
+    console.log('Live-Update gestoppt für Ride:', rideId);
+  }
+}
+
+function stopAllLiveRideUpdates() {
+  Object.keys(liveRideIntervals).forEach(rideId => stopLiveRideUpdate(rideId));
+}
+
+// ===== E-MAIL VERIFIZIERUNG =====
+function showVerificationBanner() {
+  const banner = document.getElementById('verification-banner');
+  if (banner) banner.style.display = 'flex';
+}
+
+function hideVerificationBanner() {
+  const banner = document.getElementById('verification-banner');
+  if (banner) banner.style.display = 'none';
+}
+
+async function resendVerificationEmail() {
+  try {
+    if (auth && auth.currentUser) {
+      await auth.currentUser.sendEmailVerification();
+      const banner = document.getElementById('verification-banner');
+      if (banner) {
+        banner.querySelector('.vb-text').textContent = 'Neue Bestätigungs-Mail gesendet! Prüfe deinen Posteingang.';
+        setTimeout(() => {
+          banner.querySelector('.vb-text').textContent = 'Bitte bestätige deine E-Mail-Adresse. Prüfe deinen Posteingang.';
+        }, 5000);
+      }
+    }
+  } catch (e) {
+    console.error('Verifizierungs-Mail erneut senden fehlgeschlagen:', e);
+  }
+}
+
+// ===== PASSWORT VERGESSEN =====
+async function forgotPassword() {
+  const email = document.getElementById('login-email').value.trim();
+  const msgEl = document.getElementById('forgot-success-msg');
+  if (!email) {
+    msgEl.textContent = 'Bitte gib zuerst deine E-Mail-Adresse ein.';
+    msgEl.style.background = 'rgba(220,38,38,0.2)';
+    msgEl.style.color = '#fca5a5';
+    msgEl.classList.add('visible');
+    setTimeout(() => msgEl.classList.remove('visible'), 4000);
+    return;
+  }
+  try {
+    if (auth) {
+      await auth.sendPasswordResetEmail(email);
+    }
+    msgEl.textContent = 'Link zum Zurücksetzen wurde an ' + email + ' gesendet!';
+    msgEl.style.background = 'rgba(34,197,94,0.2)';
+    msgEl.style.color = '#bbf7d0';
+    msgEl.classList.add('visible');
+    setTimeout(() => msgEl.classList.remove('visible'), 6000);
+  } catch (e) {
+    let errMsg = 'Fehler beim Senden. Versuche es später erneut.';
+    if (e.code === 'auth/user-not-found') errMsg = 'Kein Konto mit dieser E-Mail gefunden.';
+    if (e.code === 'auth/invalid-email') errMsg = 'Ungültige E-Mail-Adresse.';
+    msgEl.textContent = errMsg;
+    msgEl.style.background = 'rgba(220,38,38,0.2)';
+    msgEl.style.color = '#fca5a5';
+    msgEl.classList.add('visible');
+    setTimeout(() => msgEl.classList.remove('visible'), 5000);
+  }
+}
+
+// ===== PASSWORT ÄNDERN =====
+function openChangePassword() {
+  // Nur für E-Mail-User (nicht Google)
+  if (auth && auth.currentUser) {
+    const providers = auth.currentUser.providerData.map(p => p.providerId);
+    if (!providers.includes('password')) {
+      alert('Passwort-Änderung ist nur für E-Mail-Konten möglich. Du bist mit Google angemeldet.');
+      return;
+    }
+  }
+  document.getElementById('pw-current').value = '';
+  document.getElementById('pw-new').value = '';
+  document.getElementById('pw-confirm').value = '';
+  document.getElementById('change-pw-error').style.display = 'none';
+  document.getElementById('change-pw-success').style.display = 'none';
+  document.getElementById('change-password-modal').classList.add('active');
+}
+
+function closeChangePassword() {
+  document.getElementById('change-password-modal').classList.remove('active');
+}
+
+async function saveChangePassword() {
+  const current = document.getElementById('pw-current').value;
+  const newPw = document.getElementById('pw-new').value;
+  const confirm = document.getElementById('pw-confirm').value;
+  const errEl = document.getElementById('change-pw-error');
+  const succEl = document.getElementById('change-pw-success');
+  errEl.style.display = 'none';
+  succEl.style.display = 'none';
+
+  if (!current || !newPw || !confirm) {
+    errEl.textContent = 'Bitte alle Felder ausfüllen.';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (newPw.length < 6) {
+    errEl.textContent = 'Neues Passwort muss mindestens 6 Zeichen haben.';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (newPw !== confirm) {
+    errEl.textContent = 'Passwörter stimmen nicht überein.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  try {
+    const user = auth.currentUser;
+    const credential = firebase.auth.EmailAuthProvider.credential(user.email, current);
+    await user.reauthenticateWithCredential(credential);
+    await user.updatePassword(newPw);
+    succEl.textContent = 'Passwort erfolgreich geändert!';
+    succEl.style.display = 'block';
+    setTimeout(() => closeChangePassword(), 2000);
+  } catch (e) {
+    let msg = 'Fehler beim Ändern des Passworts.';
+    if (e.code === 'auth/wrong-password') msg = 'Aktuelles Passwort ist falsch.';
+    if (e.code === 'auth/weak-password') msg = 'Neues Passwort ist zu schwach.';
+    errEl.textContent = msg;
+    errEl.style.display = 'block';
+  }
+}
+
+// ===== PROFIL BEARBEITEN =====
+function openEditProfile() {
+  document.getElementById('edit-name').value = userData.name || '';
+  document.getElementById('edit-mode').value = userData.mode || 'walker';
+  document.getElementById('edit-profile-error').style.display = 'none';
+  document.getElementById('edit-profile-success').style.display = 'none';
+  document.getElementById('edit-profile-modal').classList.add('active');
+}
+
+function closeEditProfile() {
+  document.getElementById('edit-profile-modal').classList.remove('active');
+}
+
+async function saveEditProfile() {
+  const name = document.getElementById('edit-name').value.trim();
+  const mode = document.getElementById('edit-mode').value;
+  const errEl = document.getElementById('edit-profile-error');
+  const succEl = document.getElementById('edit-profile-success');
+  errEl.style.display = 'none';
+  succEl.style.display = 'none';
+
+  if (!name) {
+    errEl.textContent = 'Bitte einen Namen eingeben.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  userData.name = name;
+  userData.mode = mode;
+
+  // Update Firebase Auth displayName
+  try {
+    if (auth && auth.currentUser) {
+      await auth.currentUser.updateProfile({ displayName: name });
+    }
+  } catch (e) { console.error('displayName Update fehlgeschlagen:', e); }
+
+  // Save to Firestore
+  await saveUserToFirestore();
+  updateUIWithUserData();
+  updateProfileSummaries();
+
+  succEl.textContent = 'Profil gespeichert!';
+  succEl.style.display = 'block';
+  setTimeout(() => closeEditProfile(), 1500);
+}
+
+function openEditCar() {
+  document.getElementById('edit-car-brand').value = userData.car.brand || '';
+  document.getElementById('edit-car-model').value = userData.car.model || '';
+  document.getElementById('edit-car-color').value = userData.car.color || '';
+  document.getElementById('edit-car-plate').value = userData.car.plate || '';
+  document.getElementById('edit-car-seats').value = userData.car.seats || 4;
+  document.getElementById('edit-car-error').style.display = 'none';
+  document.getElementById('edit-car-success').style.display = 'none';
+  document.getElementById('edit-car-modal').classList.add('active');
+}
+
+function closeEditCar() {
+  document.getElementById('edit-car-modal').classList.remove('active');
+}
+
+async function saveEditCar() {
+  const brand = document.getElementById('edit-car-brand').value.trim();
+  const model = document.getElementById('edit-car-model').value.trim();
+  const color = document.getElementById('edit-car-color').value.trim();
+  const plate = document.getElementById('edit-car-plate').value.trim();
+  const seats = parseInt(document.getElementById('edit-car-seats').value) || 4;
+  const errEl = document.getElementById('edit-car-error');
+  const succEl = document.getElementById('edit-car-success');
+  errEl.style.display = 'none';
+  succEl.style.display = 'none';
+
+  userData.car.brand = brand;
+  userData.car.model = model;
+  userData.car.color = color;
+  userData.car.plate = plate;
+  userData.car.seats = seats;
+
+  await saveUserToFirestore();
+  updateUIWithUserData();
+  updateProfileSummaries();
+
+  succEl.textContent = 'Fahrzeug gespeichert!';
+  succEl.style.display = 'block';
+  setTimeout(() => closeEditCar(), 1500);
+}
+
+function updateProfileSummaries() {
+  const infoEl = document.getElementById('profile-info-summary');
+  const carEl = document.getElementById('profile-car-summary');
+  if (infoEl) {
+    const modeNames = { walker: 'Mitfahrer', driver: 'Fahrer', both: 'Beides' };
+    infoEl.textContent = (userData.name || '—') + ' · ' + (modeNames[userData.mode] || 'Mitfahrer');
+  }
+  if (carEl) {
+    if (userData.car.brand && userData.car.model) {
+      carEl.textContent = userData.car.brand + ' ' + userData.car.model + (userData.car.color ? ', ' + userData.car.color : '');
+    } else {
+      carEl.textContent = 'Nicht angegeben';
+    }
+  }
+}
 
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded', function() {
