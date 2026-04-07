@@ -1859,7 +1859,8 @@ function getLocationCoords(locationStr) {
 
 // Estimate distance between two location strings
 function estimateDistance(startStr, destStr) {
-  const startCoords = getLocationCoords(startStr);
+  // Versuche Start-Koordinaten: erst bekannte Orte, dann aktuelle GPS-Position
+  const startCoords = getLocationCoords(startStr) || (userPos ? { lat: userPos.lat, lng: userPos.lng } : null);
   const destCoords = getLocationCoords(destStr);
   if (startCoords && destCoords) {
     // Multiply by 1.3 for street routing factor
@@ -2136,7 +2137,12 @@ function updateSearchPricePreview() {
   const preview = document.getElementById('search-price-preview');
   if (!preview) return;
   if (dest && dest.length > 2) {
-    const dist = estimateDistance(gpsLocationName, dest);
+    let dist;
+    if (window._searchDestCoords) {
+      dist = haversineDistance(userPos.lat, userPos.lng, window._searchDestCoords.lat, window._searchDestCoords.lng) * 1.3;
+    } else {
+      dist = estimateDistance(gpsLocationName, dest);
+    }
     const breakdown = getPriceBreakdown(dist);
     document.getElementById('search-est-km').textContent = breakdown.distanceKm;
     document.getElementById('search-rider-pays').textContent = breakdown.riderPays.toFixed(2) + '€';
@@ -3305,10 +3311,17 @@ function openSearchRideModal() {
   document.getElementById('search-ride-modal').classList.add('active');
   const now = new Date().toISOString().slice(0, 16);
   document.getElementById('search-time').value = now;
+  // Wenn auf der Karte bereits ein Ziel gewählt wurde, übernehmen
+  if (destPos && document.getElementById('map-dest').value) {
+    document.getElementById('search-dest').value = document.getElementById('map-dest').value;
+    window._searchDestCoords = { lat: destPos.lat, lng: destPos.lng };
+    updateSearchPricePreview();
+  }
 }
 
 function closeSearchRideModal() {
   document.getElementById('search-ride-modal').classList.remove('active');
+  window._searchDestCoords = null;
 }
 
 async function submitSearchRide() {
@@ -3332,7 +3345,21 @@ async function submitSearchRide() {
     btn.textContent = '⏳ Wird gespeichert...';
 
     const userId = auth.currentUser.uid;
-    const distKm = estimateDistance(start, dest);
+
+    // Ziel-Koordinaten aus Geocoding oder Map-Screen oder Fallback
+    const resolvedDestCoords = window._searchDestCoords || destPos || null;
+
+    // Entfernung berechnen — mit echten Koordinaten wenn möglich
+    let distKm;
+    if (resolvedDestCoords) {
+      distKm = haversineDistance(userPos.lat, userPos.lng, resolvedDestCoords.lat, resolvedDestCoords.lng) * 1.3;
+    } else {
+      distKm = estimateDistance(start, dest);
+    }
+
+    const destGeoPoint = resolvedDestCoords
+      ? new firebase.firestore.GeoPoint(resolvedDestCoords.lat, resolvedDestCoords.lng)
+      : new firebase.firestore.GeoPoint(userPos.lat, userPos.lng);
 
     const searchRef = await db.collection('rides').add({
       userId: userId,
@@ -3342,7 +3369,7 @@ async function submitSearchRide() {
       start: start,
       startCoords: new firebase.firestore.GeoPoint(userPos.lat, userPos.lng),
       destination: dest,
-      destCoords: new firebase.firestore.GeoPoint(userPos.lat, userPos.lng),
+      destCoords: destGeoPoint,
       departureTime: firebase.firestore.FieldValue.serverTimestamp(),
       seats: 1,
       status: 'active',
@@ -3351,8 +3378,7 @@ async function submitSearchRide() {
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
-    // Ziel-Koordinaten (destPos kommt vom Map-Screen Geocoding)
-    const searchDestCoords = destPos ? { lat: destPos.lat, lng: destPos.lng } : { lat: userPos.lat, lng: userPos.lng };
+    const searchDestCoords = resolvedDestCoords || { lat: userPos.lat, lng: userPos.lng };
 
     // Start live updates for this search request
     startLiveRideUpdate(searchRef.id, searchDestCoords);
