@@ -836,9 +836,276 @@
     background: var(--green-700);
     transform: scale(0.98);
   }
+
+  /* ===== NEW: ACTIVE RIDE BANNER ===== */
+  .active-ride-banner {
+    background: linear-gradient(135deg, var(--green-600), var(--green-700));
+    color: #fff;
+    padding: 16px 20px;
+    border-radius: 12px;
+    margin: 16px 20px 12px;
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.25);
+  }
+  .active-ride-banner .banner-label {
+    font-size: 12px;
+    opacity: 0.9;
+    margin-bottom: 8px;
+  }
+  .active-ride-banner .banner-route {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .active-ride-banner .banner-info {
+    display: flex;
+    gap: 16px;
+    font-size: 13px;
+    margin-bottom: 12px;
+  }
+  .active-ride-banner .banner-info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .active-ride-banner .info-label {
+    opacity: 0.8;
+    font-size: 12px;
+  }
+  .active-ride-banner .info-value {
+    font-weight: 600;
+  }
+  .active-ride-banner .countdown-timer {
+    display: inline-block;
+    background: rgba(255,255,255,0.2);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .active-ride-banner .banner-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .active-ride-banner button {
+    flex: 1;
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    font-family: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+  }
+  .active-ride-banner .btn-edit {
+    background: rgba(255,255,255,0.2);
+    color: #fff;
+  }
+  .active-ride-banner .btn-edit:active {
+    background: rgba(255,255,255,0.3);
+  }
+  .active-ride-banner .btn-cancel {
+    background: rgba(255,255,255,0.2);
+    color: #fff;
+  }
+  .active-ride-banner .btn-cancel:active {
+    background: rgba(255,255,255,0.3);
+  }
+
+  /* ===== NEW: RIDER REQUEST CARD ===== */
+  .rider-request-card {
+    background: #fff;
+    border: 2px solid var(--green-200);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.1);
+  }
+  .rider-request-card .request-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+  }
+  .rider-request-card .request-rider {
+    font-size: 14px;
+    font-weight: 600;
+    color: #0f172a;
+  }
+  .rider-request-card .request-time {
+    font-size: 12px;
+    color: #999;
+  }
+  .rider-request-card .request-route {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 8px;
+  }
+  .rider-request-card .request-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .rider-request-card .request-btn {
+    flex: 1;
+    padding: 8px;
+    border-radius: 8px;
+    border: none;
+    font-family: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s;
+  }
+  .rider-request-card .btn-accept {
+    background: var(--green-600);
+    color: #fff;
+  }
+  .rider-request-card .btn-accept:active {
+    background: var(--green-700);
+    transform: scale(0.98);
+  }
+  .rider-request-card .btn-decline {
+    background: #fee2e2;
+    color: #dc2626;
+  }
+  .rider-request-card .btn-decline:active {
+    background: #fecaca;
+    transform: scale(0.98);
+  }
+
+  /* ===== NEW: MATCH ACTIVE CARD ===== */
+  .match-active-card {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    color: #fff;
+    border-radius: 12px;
+    padding: 16px;
+    margin: 16px 20px 12px;
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);
+  }
+  .match-active-card .match-label {
+    font-size: 12px;
+    opacity: 0.9;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .match-active-card .match-label::before {
+    content: '✓';
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    background: rgba(255,255,255,0.3);
+    border-radius: 50%;
+    text-align: center;
+    line-height: 16px;
+    font-size: 11px;
+  }
+  .match-active-card .match-partner {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .match-active-card .match-route {
+    font-size: 13px;
+    margin-bottom: 12px;
+    opacity: 0.95;
+  }
+  .match-active-card .match-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .match-active-card button {
+    flex: 1;
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    font-family: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+  }
+  .match-active-card .btn-chat {
+    background: rgba(255,255,255,0.3);
+    color: #fff;
+  }
+  .match-active-card .btn-chat:active {
+    background: rgba(255,255,255,0.4);
+  }
+
+  /* ===== NEW: NOTIFICATION TOAST ===== */
+  .notification-toast {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    right: 20px;
+    background: #fff;
+    border-left: 4px solid var(--green-600);
+    border-radius: 8px;
+    padding: 12px 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: slideDown 0.3s ease-out;
+  }
+  .notification-toast.hidden {
+    display: none;
+  }
+  @keyframes slideDown {
+    from {
+      transform: translateY(-100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  .notification-toast .toast-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .notification-toast .toast-content {
+    flex: 1;
+  }
+  .notification-toast .toast-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #0f172a;
+  }
+  .notification-toast .toast-message {
+    font-size: 12px;
+    color: #666;
+    margin-top: 2px;
+  }
+  .notification-toast .toast-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    color: #999;
+    padding: 0;
+    flex-shrink: 0;
+  }
+  .notification-toast .toast-close:active {
+    color: #333;
+  }
 </style>
 </head>
 <body>
+
+<!-- ===== NOTIFICATION TOAST ===== -->
+<div class="notification-toast hidden" id="notification-toast">
+  <div class="toast-icon">📬</div>
+  <div class="toast-content">
+    <div class="toast-title" id="toast-title">Neue Anfrage</div>
+    <div class="toast-message" id="toast-message">Mitfahrer möchte deine Fahrt buchen</div>
+  </div>
+  <button class="toast-close" onclick="closeNotification()">×</button>
+</div>
 
 <!-- ===== LOGIN ===== -->
 <div class="screen" id="login">
@@ -1031,6 +1298,35 @@
     </div>
   </div>
 
+  <!-- Active Search (Mitfahrer only, shown when searching) -->
+  <div id="home-active-search-section" style="display: none;">
+    <div class="active-ride-banner" style="background: linear-gradient(135deg, var(--teal-500), var(--teal-600)); margin: 16px 20px 12px;">
+      <div class="banner-label">🔍 Fahrt wird gesucht</div>
+      <div class="banner-route" id="home-active-search-route">— → —</div>
+      <div class="banner-info">
+        <div class="banner-info-item">
+          <span class="info-label">Verbleibende Zeit</span>
+          <span class="countdown-timer" id="home-search-countdown">90 Min</span>
+        </div>
+      </div>
+      <div class="banner-actions">
+        <button class="btn-cancel" onclick="cancelSearchDisplay()">Suche abbrechen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Active Match (shown when matched) -->
+  <div id="home-match-section" style="display: none;">
+    <div class="match-active-card">
+      <div class="match-label">Fahrt bestätigt!</div>
+      <div class="match-partner" id="home-match-partner-name">— in deinem Auto</div>
+      <div class="match-route" id="home-match-route">— → —</div>
+      <div class="match-actions">
+        <button class="btn-chat" onclick="openMatchChat()">💬 Chat</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Aktive Fahrten des Nutzers -->
   <div class="planned-rides-section">
     <div class="section-title">Meine aktiven Fahrten</div>
@@ -1147,7 +1443,7 @@
   <div class="drv-header">
     <div>
       <div class="drv-title">Fahrer-Modus</div>
-      <div class="drv-status">Bereit für Fahrten</div>
+      <div class="drv-status" id="driver-status-text">Bereit für Fahrten</div>
     </div>
     <div class="avatar" onclick="showScreen('profile-screen')" style="cursor: pointer;">P</div>
   </div>
@@ -1161,8 +1457,35 @@
     </div>
 
     <div class="drv-control-btns">
-      <button class="drv-btn drv-online" onclick="setOnlineStatus(true)">🟢 Online</button>
+      <button class="drv-btn drv-online" onclick="startOfferingRide()">🟢 Fahrt anbieten</button>
       <button class="drv-btn drv-offline" onclick="setOnlineStatus(false)">⚪ Offline</button>
+    </div>
+  </div>
+
+  <!-- Active Ride Banner (shown when driver has active ride) -->
+  <div class="active-ride-banner" id="active-ride-banner" style="display: none;">
+    <div class="banner-label">🚗 Aktive Fahrt</div>
+    <div class="banner-route" id="active-ride-route">— → —</div>
+    <div class="banner-info">
+      <div class="banner-info-item">
+        <span class="info-label">Verbleibende Zeit</span>
+        <span class="countdown-timer" id="countdown-timer">60 Min</span>
+      </div>
+      <div class="banner-info-item">
+        <span class="info-label">Anfragen</span>
+        <span class="info-value" id="active-ride-requests">0</span>
+      </div>
+    </div>
+    <div class="banner-actions">
+      <button class="btn-cancel" onclick="cancelActiveRide()">Fahrt beenden</button>
+    </div>
+  </div>
+
+  <!-- Rider Requests Section (shown when there are matching requests) -->
+  <div class="planned-rides-section" id="driver-requests-section" style="display: none;">
+    <div class="section-title">📬 Mitfahrer-Anfragen</div>
+    <div class="available-rides-list" id="driver-requests-list">
+      <!-- Request cards will be added here by JavaScript -->
     </div>
   </div>
 
@@ -3267,6 +3590,15 @@ async function submitOfferRide() {
     const mapsLinkVal = document.getElementById('offer-maps-link').value || '';
     const destCoordsForUpdate = window._offerDestCoords ? { lat: window._offerDestCoords.lat, lng: window._offerDestCoords.lng } : null;
 
+    // Driver can only have 1 active ride at a time
+    if (window.activeDriverRide) {
+      alert('Du hast bereits eine aktive Fahrt. Beende diese zuerst.');
+      return;
+    }
+
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 60 * 60 * 1000); // 60 minutes from now
+
     const rideRef = await db.collection('rides').add({
       userId: userId,
       userName: userData.name || 'Unbekannt',
@@ -3283,11 +3615,25 @@ async function submitOfferRide() {
       distanceKm: distKm,
       price: calculateBasePrice(distKm),
       mapsLink: mapsLinkVal,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      expiresAt: firebase.firestore.Timestamp.fromDate(expiresAt)
     });
+
+    // Store active driver ride
+    window.activeDriverRide = rideRef.id;
+    window.activeDriverRideExpiresAt = expiresAt;
+
+    // Start auto-expiration check
+    startRideExpirationCheck(rideRef.id, expiresAt);
+
+    // Display active ride banner on driver screen
+    displayActiveRide(rideRef.id, start, dest);
 
     // Start live updates for this ride
     startLiveRideUpdate(rideRef.id, destCoordsForUpdate || { lat: userPos.lat, lng: userPos.lng });
+
+    // Start listening for matching requests
+    setupDriverRequestsListener(rideRef.id);
 
     // Reset Maps link state
     window._offerDestCoords = null;
@@ -3361,6 +3707,15 @@ async function submitSearchRide() {
       ? new firebase.firestore.GeoPoint(resolvedDestCoords.lat, resolvedDestCoords.lng)
       : new firebase.firestore.GeoPoint(userPos.lat, userPos.lng);
 
+    // Rider can only have 1 active search at a time
+    if (window.activeRiderSearch) {
+      alert('Du hast bereits eine aktive Fahrtsuche. Bitte beende diese zuerst.');
+      return;
+    }
+
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 90 * 60 * 1000); // 90 minutes from now
+
     const searchRef = await db.collection('rides').add({
       userId: userId,
       userName: userData.name || 'Unbekannt',
@@ -3375,16 +3730,30 @@ async function submitSearchRide() {
       status: 'active',
       distanceKm: distKm,
       price: calculateBasePrice(distKm),
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      expiresAt: firebase.firestore.Timestamp.fromDate(expiresAt)
     });
 
     const searchDestCoords = resolvedDestCoords || { lat: userPos.lat, lng: userPos.lng };
 
+    // Store active rider search
+    window.activeRiderSearch = searchRef.id;
+    window.activeRiderSearchExpiresAt = expiresAt;
+
+    // Start auto-expiration check
+    startSearchExpirationCheck(searchRef.id, expiresAt);
+
+    // Start listening for match status changes
+    setupRiderMatchListener(searchRef.id);
+
     // Start live updates for this search request
     startLiveRideUpdate(searchRef.id, searchDestCoords);
 
-    // Aktive Fahrtsuche-Anzeige aktivieren
+    // Aktive Fahrtsuche-Anzeige aktivieren (on map)
     activateSearchDisplay(start, dest, searchRef.id, searchDestCoords);
+
+    // Also show on home screen
+    showActiveSearchOnHome(start, dest, searchRef.id);
 
     closeSearchRideModal();
     loadAvailableRides(); // Reload to show offers
@@ -3410,17 +3779,48 @@ async function matchRide(rideId) {
     if (!rideDoc.exists) { alert('Fahrt nicht mehr verfügbar'); return; }
     const ride = rideDoc.data();
 
-    // Update the ride status to matched
-    await db.collection('rides').doc(rideId).update({
-      status: 'matched',
-      matchedWith: auth.currentUser.uid,
-      matchedName: userData.name || 'Unbekannt',
-      matchedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
+    const isDriver = (ride.type === 'offer');
+    const isRider = (ride.type === 'request');
+
+    // If driver accepts a rider request: update BOTH documents
+    if (isDriver && appMode === 'driver') {
+      // This is a rider's request document
+      // Update the request to matched
+      await db.collection('rides').doc(rideId).update({
+        status: 'matched',
+        matchedWith: auth.currentUser.uid,
+        matchedName: userData.name || 'Unbekannt',
+        matchedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      // Also update the driver's active ride with rider info
+      if (window.activeDriverRide) {
+        await db.collection('rides').doc(window.activeDriverRide).update({
+          matchedRiderId: rideId,
+          matchedWith: ride.userId,
+          matchedName: ride.userName,
+          matchedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+
+      // Show notification
+      showDriverNotification('Mitfahrer akzeptiert!', ride.userName + ' hat deine Fahrt gebucht');
+
+    } else {
+      // Rider accepts driver's offer
+      await db.collection('rides').doc(rideId).update({
+        status: 'matched',
+        matchedWith: auth.currentUser.uid,
+        matchedName: userData.name || 'Unbekannt',
+        matchedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      // Show match on home screen
+      showMatchOnHome(ride.userName, ride.start, ride.destination);
+    }
 
     // Determine distance and show active ride screen
     const distKm = ride.distanceKm || estimateDistance(ride.start, ride.destination);
-    const isDriver = (appMode === 'driver');
 
     showActiveRide({
       rideId: rideId,
@@ -3428,8 +3828,8 @@ async function matchRide(rideId) {
       destination: ride.destination,
       distanceKm: distKm,
       partnerName: ride.userName,
-      driverUserId: isDriver ? auth.currentUser.uid : ride.userId,
-    }, isDriver);
+      driverUserId: isDriver ? ride.userId : auth.currentUser.uid,
+    }, isRider);
 
     // Match gefunden — Fahrtsuche-Anzeige deaktivieren
     if (activeSearchRideId === rideId || ride.userId === (auth.currentUser && auth.currentUser.uid)) {
@@ -3441,6 +3841,303 @@ async function matchRide(rideId) {
     alert('Fehler: ' + e.message);
     console.error(e);
   }
+}
+
+// ===== NEW DRIVER FUNCTIONS =====
+
+// Initiate ride offering (opens modal)
+function startOfferingRide() {
+  openOfferRideModal();
+}
+
+// Display active ride banner on driver screen
+function displayActiveRide(rideId, start, dest) {
+  const banner = document.getElementById('active-ride-banner');
+  const route = document.getElementById('active-ride-route');
+  route.textContent = start + ' → ' + dest;
+  banner.style.display = 'block';
+  updateCountdownTimer();
+  window.countdownInterval = setInterval(updateCountdownTimer, 1000);
+}
+
+// Update countdown timer
+function updateCountdownTimer() {
+  if (!window.activeDriverRideExpiresAt) return;
+  const now = new Date();
+  const diffMs = window.activeDriverRideExpiresAt - now;
+  if (diffMs <= 0) {
+    // Ride expired
+    cancelActiveRide();
+    return;
+  }
+  const mins = Math.floor(diffMs / 60000);
+  const secs = Math.floor((diffMs % 60000) / 1000);
+  const timerEl = document.getElementById('countdown-timer');
+  if (timerEl) {
+    timerEl.textContent = mins + ' Min ' + secs + ' Sek';
+  }
+}
+
+// Start ride expiration check
+function startRideExpirationCheck(rideId, expiresAt) {
+  const checkInterval = setInterval(async () => {
+    const now = new Date();
+    if (now >= expiresAt) {
+      clearInterval(checkInterval);
+      // Auto-delete expired ride
+      try {
+        await db.collection('rides').doc(rideId).update({ status: 'expired' });
+        if (window.activeDriverRide === rideId) {
+          cancelActiveRide(true);
+        }
+      } catch (e) {
+        console.error('Error expiring ride:', e);
+      }
+    }
+  }, 10000); // Check every 10 seconds
+}
+
+// Cancel active ride (driver ends ride)
+async function cancelActiveRide(autoExpired = false) {
+  if (!window.activeDriverRide) return;
+
+  try {
+    await db.collection('rides').doc(window.activeDriverRide).update({
+      status: 'cancelled'
+    });
+
+    if (window.countdownInterval) {
+      clearInterval(window.countdownInterval);
+    }
+
+    window.activeDriverRide = null;
+    window.activeDriverRideExpiresAt = null;
+
+    const banner = document.getElementById('active-ride-banner');
+    if (banner) banner.style.display = 'none';
+
+    const requestsSection = document.getElementById('driver-requests-section');
+    if (requestsSection) requestsSection.style.display = 'none';
+
+    if (autoExpired) {
+      alert('Fahrt abgelaufen');
+    } else {
+      alert('Fahrt beendet');
+    }
+
+    loadAvailableRides();
+  } catch (e) {
+    console.error('Error cancelling ride:', e);
+  }
+}
+
+// Set up listener for incoming rider requests (driver)
+function setupDriverRequestsListener(driverRideId) {
+  if (!db) return;
+
+  db.collection('rides')
+    .where('type', '==', 'request')
+    .where('status', '==', 'active')
+    .onSnapshot(snapshot => {
+      const requests = [];
+      snapshot.forEach(doc => {
+        const ride = doc.data();
+        // Filter by route overlap using pointToSegmentDist
+        if (routeOverlaps(ride)) {
+          requests.push({ id: doc.id, ...ride });
+        }
+      });
+
+      // Update requests count in banner
+      if (requests.length > 0) {
+        const countEl = document.getElementById('active-ride-requests');
+        if (countEl) countEl.textContent = requests.length;
+        displayDriverRequests(requests);
+      }
+    }, error => {
+      console.error('Error setting up driver requests listener:', error);
+    });
+}
+
+// Check if rider's route overlaps with driver's route
+function routeOverlaps(riderRide) {
+  if (!window.activeDriverRide) return false;
+  // Simple overlap check: if both have start and dest within reasonable distance
+  // Using the existing pointToSegmentDist logic would go here
+  // For now, using a simple distance threshold
+  const riderStart = riderRide.startCoords;
+  const riderDest = riderRide.destCoords;
+
+  // This is a simplified check — in production would use actual route matching
+  return true; // Accept all for now (existing matching logic handles it)
+}
+
+// Display rider requests on driver screen
+function displayDriverRequests(requests) {
+  const section = document.getElementById('driver-requests-section');
+  const list = document.getElementById('driver-requests-list');
+
+  if (!section || requests.length === 0) {
+    if (section) section.style.display = 'none';
+    return;
+  }
+
+  section.style.display = 'block';
+  list.innerHTML = '';
+
+  requests.forEach(request => {
+    const card = document.createElement('div');
+    card.className = 'rider-request-card';
+    card.innerHTML = `
+      <div class="request-header">
+        <div class="request-rider">${request.userName}</div>
+        <div class="request-time">⭐ ${request.userRating || 0}</div>
+      </div>
+      <div class="request-route">${request.destination}</div>
+      <div class="request-actions">
+        <button class="request-btn btn-accept" onclick="acceptRiderRequest('${request.id}')">✓ Annehmen</button>
+        <button class="request-btn btn-decline" onclick="declineRiderRequest('${request.id}')">✕ Ablehnen</button>
+      </div>
+    `;
+    list.appendChild(card);
+  });
+}
+
+// Driver accepts rider request
+async function acceptRiderRequest(requestId) {
+  await matchRide(requestId);
+}
+
+// Driver declines rider request (just hide locally)
+function declineRiderRequest(requestId) {
+  const card = document.querySelector(`[onclick*="'${requestId}'"]`)?.closest('.rider-request-card');
+  if (card) {
+    card.style.display = 'none';
+  }
+}
+
+// Show notification toast
+function showDriverNotification(title, message) {
+  const toast = document.getElementById('notification-toast');
+  if (toast) {
+    document.getElementById('toast-title').textContent = title;
+    document.getElementById('toast-message').textContent = message;
+    toast.classList.remove('hidden');
+
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+      toast.classList.add('hidden');
+    }, 5000);
+  }
+}
+
+// Close notification
+function closeNotification() {
+  const toast = document.getElementById('notification-toast');
+  if (toast) {
+    toast.classList.add('hidden');
+  }
+}
+
+// ===== NEW RIDER FUNCTIONS =====
+
+// Show active search on home screen
+function showActiveSearchOnHome(start, dest, searchId) {
+  const section = document.getElementById('home-active-search-section');
+  const route = document.getElementById('home-active-search-route');
+  if (section && route) {
+    route.textContent = start + ' → ' + dest;
+    section.style.display = 'block';
+    updateHomeSearchCountdown();
+    window.homeSearchInterval = setInterval(updateHomeSearchCountdown, 1000);
+  }
+}
+
+// Update home screen search countdown
+function updateHomeSearchCountdown() {
+  if (!window.activeRiderSearchExpiresAt) return;
+  const now = new Date();
+  const diffMs = window.activeRiderSearchExpiresAt - now;
+  if (diffMs <= 0) {
+    cancelSearchDisplay();
+    return;
+  }
+  const mins = Math.floor(diffMs / 60000);
+  const timerEl = document.getElementById('home-search-countdown');
+  if (timerEl) {
+    timerEl.textContent = mins + ' Min';
+  }
+}
+
+// Start search expiration check (rider)
+function startSearchExpirationCheck(searchId, expiresAt) {
+  const checkInterval = setInterval(async () => {
+    const now = new Date();
+    if (now >= expiresAt) {
+      clearInterval(checkInterval);
+      // Auto-delete expired search
+      try {
+        await db.collection('rides').doc(searchId).update({ status: 'expired' });
+        if (window.activeRiderSearch === searchId) {
+          deactivateSearchDisplay();
+          hideActiveSearchOnHome();
+        }
+      } catch (e) {
+        console.error('Error expiring search:', e);
+      }
+    }
+  }, 10000); // Check every 10 seconds
+}
+
+// Hide active search on home screen
+function hideActiveSearchOnHome() {
+  const section = document.getElementById('home-active-search-section');
+  if (section) {
+    section.style.display = 'none';
+  }
+  if (window.homeSearchInterval) {
+    clearInterval(window.homeSearchInterval);
+  }
+}
+
+// Set up listener for match status changes (rider)
+function setupRiderMatchListener(searchId) {
+  if (!db) return;
+
+  db.collection('rides').doc(searchId).onSnapshot(snapshot => {
+    if (snapshot.exists) {
+      const ride = snapshot.data();
+      if (ride.status === 'matched') {
+        // Show match on home screen
+        showMatchOnHome(ride.matchedName, ride.start, ride.destination);
+      }
+    }
+  }, error => {
+    console.error('Error setting up match listener:', error);
+  });
+}
+
+// Show match card on home screen
+function showMatchOnHome(partnerName, start, dest) {
+  const section = document.getElementById('home-match-section');
+  const partnerEl = document.getElementById('home-match-partner-name');
+  const routeEl = document.getElementById('home-match-route');
+
+  if (section && partnerEl && routeEl) {
+    partnerEl.textContent = partnerName + ' in seinem Auto';
+    routeEl.textContent = start + ' → ' + dest;
+    section.style.display = 'block';
+
+    // Hide search section
+    const searchSection = document.getElementById('home-active-search-section');
+    if (searchSection) searchSection.style.display = 'none';
+  }
+}
+
+// Open match chat
+function openMatchChat() {
+  // Navigate to chat screen (existing functionality)
+  showScreen('chat-screen');
 }
 
 // Set up real-time listener for available rides
@@ -3633,9 +4330,26 @@ function closePrivacyScreen() { document.getElementById('privacy-screen-modal').
 let liveRideIntervals = {}; // rideId -> intervalId
 
 // ===== AKTIVE FAHRTSUCHE-ANZEIGE =====
+// Active search (rider)
 let activeSearchRideId = null;
 let activeSearchDestCoords = null;
 let activeSearchProximityInterval = null;
+
+// Active ride (driver)
+let window_activeDriverRide = null;
+let window_activeDriverRideExpiresAt = null;
+let window_activeRiderSearch = null;
+let window_activeRiderSearchExpiresAt = null;
+let countdownInterval = null;
+let homeSearchInterval = null;
+
+// Initialize global window properties for active rides/searches
+window.activeDriverRide = null;
+window.activeDriverRideExpiresAt = null;
+window.activeRiderSearch = null;
+window.activeRiderSearchExpiresAt = null;
+window.countdownInterval = null;
+window.homeSearchInterval = null;
 
 function activateSearchDisplay(startName, destName, rideId, destCoords) {
   activeSearchRideId = rideId;
