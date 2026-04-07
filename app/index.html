@@ -4050,12 +4050,21 @@ function displayDriverRequests(requests) {
     return;
   }
 
+  // Abgelehnte Anfragen herausfiltern
+  const filteredRequests = requests.filter(r => !window._declinedRequests || !window._declinedRequests.has(r.id));
+
+  if (filteredRequests.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+
   section.style.display = 'block';
   list.innerHTML = '';
 
-  requests.forEach(request => {
+  filteredRequests.forEach(request => {
     const card = document.createElement('div');
     card.className = 'rider-request-card';
+    card.id = 'request-card-' + request.id;
     card.innerHTML = `
       <div class="request-header">
         <div class="request-rider">${request.userName}</div>
@@ -4069,6 +4078,10 @@ function displayDriverRequests(requests) {
     `;
     list.appendChild(card);
   });
+
+  // Anfragezähler aktualisieren
+  const countEl = document.getElementById('active-ride-requests');
+  if (countEl) countEl.textContent = filteredRequests.length;
 }
 
 // Driver accepts rider request
@@ -4076,11 +4089,32 @@ async function acceptRiderRequest(requestId) {
   await matchRide(requestId);
 }
 
-// Driver declines rider request (just hide locally)
+// Driver declines rider request — merkt sich Ablehnung und aktualisiert UI
+window._declinedRequests = window._declinedRequests || new Set();
+
 function declineRiderRequest(requestId) {
-  const card = document.querySelector(`[onclick*="'${requestId}'"]`)?.closest('.rider-request-card');
+  // Lokal merken, dass diese Anfrage abgelehnt wurde
+  window._declinedRequests.add(requestId);
+
+  // Karte mit Animation ausblenden
+  const card = document.getElementById('request-card-' + requestId);
   if (card) {
-    card.style.display = 'none';
+    card.style.transition = 'opacity 0.3s, transform 0.3s';
+    card.style.opacity = '0';
+    card.style.transform = 'translateX(100px)';
+    setTimeout(() => card.remove(), 300);
+  }
+
+  // Anfragezähler aktualisieren
+  const remaining = document.querySelectorAll('.rider-request-card');
+  const visibleCount = Array.from(remaining).filter(c => c.style.opacity !== '0').length;
+  const countEl = document.getElementById('active-ride-requests');
+  if (countEl) countEl.textContent = Math.max(0, visibleCount - 1);
+
+  // Wenn keine Anfragen mehr, Section ausblenden
+  if (visibleCount <= 1) {
+    const section = document.getElementById('driver-requests-section');
+    if (section) section.style.display = 'none';
   }
 }
 
