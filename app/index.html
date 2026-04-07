@@ -246,15 +246,79 @@
   .search-input:focus { outline: none; border-color: var(--green-600); }
   .geocoding-dropdown {
     position: absolute; top: 100%; left: 0; right: 0; background: #fff;
-    border: 1px solid #e5e7eb; border-radius: 8px; max-height: 200px; overflow-y: auto;
-    display: none; z-index: 100;
+    border: 1px solid #e5e7eb; border-radius: 0 0 12px 12px; max-height: 260px; overflow-y: auto;
+    display: none; z-index: 100; box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    margin-top: -1px;
   }
   .geocoding-dropdown.visible { display: block; }
   .geocoding-item {
-    padding: 10px 12px; cursor: pointer; font-size: 13px; border-bottom: 1px solid #f0f0f0;
+    padding: 12px 14px; cursor: pointer; font-size: 14px; border-bottom: 1px solid #f0f0f0;
+    display: flex; align-items: flex-start; gap: 10px;
   }
-  .geocoding-item:hover { background: var(--green-50); }
+  .geocoding-item:last-child { border-bottom: none; }
+  .geocoding-item:hover, .geocoding-item:active { background: var(--green-50); }
+  .geocoding-item .geo-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .geocoding-item .geo-text { flex: 1; min-width: 0; }
+  .geocoding-item .geo-main { font-weight: 500; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .geocoding-item .geo-sub { font-size: 12px; color: #9ca3af; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #map { flex: 1; z-index: 1; }
+
+  /* ===== ACTIVE SEARCH DISPLAY ===== */
+  .active-search-card {
+    display: none;
+    position: absolute;
+    bottom: 20px; left: 16px; right: 16px;
+    z-index: 10;
+    background: #fff;
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    border: 2px solid var(--green-500);
+  }
+  .active-search-card.visible { display: block; }
+  .active-search-card .search-pulse {
+    display: inline-block;
+    width: 10px; height: 10px;
+    background: var(--green-500);
+    border-radius: 50%;
+    margin-right: 8px;
+    animation: searchPulse 1.5s ease-in-out infinite;
+  }
+  @keyframes searchPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(1.4); }
+  }
+  .active-search-card .search-label {
+    font-size: 13px; font-weight: 700; color: var(--green-700);
+    display: flex; align-items: center; margin-bottom: 10px;
+  }
+  .active-search-card .search-route {
+    display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px;
+  }
+  .active-search-card .route-dots {
+    display: flex; flex-direction: column; align-items: center; gap: 2px; padding-top: 4px;
+  }
+  .active-search-card .route-dots .dot-start {
+    width: 10px; height: 10px; background: var(--green-600); border-radius: 50%;
+  }
+  .active-search-card .route-dots .dot-line {
+    width: 2px; height: 18px; background: #ccc;
+  }
+  .active-search-card .route-dots .dot-end {
+    width: 10px; height: 10px; background: #ef4444; border-radius: 50%;
+  }
+  .active-search-card .route-labels {
+    flex: 1; display: flex; flex-direction: column; gap: 8px;
+  }
+  .active-search-card .route-labels span {
+    font-size: 13px; color: #333; font-weight: 500;
+  }
+  .active-search-card .search-cancel-btn {
+    width: 100%; padding: 10px; border-radius: 10px; border: none;
+    background: #fee2e2; color: #dc2626; font-weight: 600; font-size: 13px;
+    font-family: inherit; cursor: pointer;
+  }
+  .active-search-card .search-cancel-btn:active { background: #fecaca; }
 
   /* ===== CHAT SCREEN ===== */
   #chat-screen { background: var(--green-50); }
@@ -999,15 +1063,33 @@
     <div class="map-header">
       <button class="back-btn" onclick="showScreen('home')">‹</button>
       <div class="search-input-wrapper" style="position: relative;">
-        <input type="text" class="search-input" id="map-dest" placeholder="Ziel eingeben...">
+        <input type="text" class="search-input" id="map-dest" placeholder="Wohin? z.B. Marienplatz, Hauptbahnhof..." autocomplete="off">
         <div class="geocoding-dropdown" id="map-dest-dropdown"></div>
       </div>
     </div>
     <div id="map"></div>
   </div>
 
-  <div style="position: absolute; bottom: 20px; left: 20px; right: 20px; z-index: 10;">
+  <!-- Default: Fahrt suchen Button -->
+  <div id="search-btn-wrap" style="position: absolute; bottom: 20px; left: 20px; right: 20px; z-index: 10;">
     <button class="btn-primary" onclick="startSearch()" style="max-width: none;">Fahrt suchen</button>
+  </div>
+
+  <!-- Aktive Fahrtsuche-Karte (wird eingeblendet nach Suche) -->
+  <div class="active-search-card" id="active-search-card">
+    <div class="search-label"><span class="search-pulse"></span> Fahrt wird gesucht...</div>
+    <div class="search-route">
+      <div class="route-dots">
+        <div class="dot-start"></div>
+        <div class="dot-line"></div>
+        <div class="dot-end"></div>
+      </div>
+      <div class="route-labels">
+        <span id="active-search-start">Aktueller Standort</span>
+        <span id="active-search-dest">—</span>
+      </div>
+    </div>
+    <button class="search-cancel-btn" onclick="cancelSearchDisplay()">Suche abbrechen</button>
   </div>
 </div>
 
@@ -1300,9 +1382,10 @@
       </div>
     </div>
 
-    <div class="ride-form-group">
+    <div class="ride-form-group" style="position: relative;">
       <label>Ziel</label>
-      <input type="text" id="offer-dest" placeholder="z.B. Marienplatz" oninput="updateOfferPricePreview()">
+      <input type="text" id="offer-dest" placeholder="z.B. Marienplatz, Leopoldstraße 10..." oninput="updateOfferPricePreview(); debouncedGeocode(this.value, 'offer-dest-dropdown');" autocomplete="off">
+      <div class="geocoding-dropdown" id="offer-dest-dropdown"></div>
     </div>
 
     <div class="ride-form-group">
@@ -1344,9 +1427,10 @@
       </div>
     </div>
 
-    <div class="ride-form-group">
+    <div class="ride-form-group" style="position: relative;">
       <label>Ziel</label>
-      <input type="text" id="search-dest" placeholder="z.B. Marienplatz" oninput="updateSearchPricePreview()">
+      <input type="text" id="search-dest" placeholder="z.B. Marienplatz, Leopoldstraße 10..." oninput="updateSearchPricePreview(); debouncedGeocode(this.value, 'search-dest-dropdown');" autocomplete="off">
+      <div class="geocoding-dropdown" id="search-dest-dropdown"></div>
     </div>
 
     <div id="search-price-preview" style="margin-top: 4px; padding: 12px; background: var(--green-50); border-radius: 10px; font-size: 13px; color: var(--green-800); display: none;">
@@ -2514,6 +2598,11 @@ function showScreen(id) {
   if (id === 'map-screen' && !map) initMap();
   if (id === 'map-screen' && map) {
     setTimeout(() => map.invalidateSize(), 100);
+    // Aktive Suche wieder anzeigen, falls vorhanden
+    if (activeSearchRideId) {
+      document.getElementById('active-search-card').classList.add('visible');
+      document.getElementById('search-btn-wrap').style.display = 'none';
+    }
   }
 
   if (id === 'home') {
@@ -2584,29 +2673,101 @@ function initMap() {
 }
 
 // ===== GEOCODING =====
+// München Viewbox für bevorzugte Ergebnisse (SW: 11.36,48.06 / NE: 11.72,48.25)
+const MUNICH_VIEWBOX = '11.36,48.25,11.72,48.06';
+
+function formatGeoAddress(result) {
+  const parts = result.display_name.split(',').map(p => p.trim());
+  // Hauptname: erster Teil (Straße/Ort/POI)
+  let main = parts[0];
+  // Hausnummer oft in parts[1] wenn es eine reine Zahl ist
+  if (parts[1] && /^\d+[a-zA-Z]?$/.test(parts[1].trim())) {
+    main = parts[0] + ' ' + parts[1].trim();
+  }
+  // Stadtteil/Stadt als Untertitel
+  const sub = parts.filter((p, i) => {
+    if (i === 0) return false;
+    if (/^\d+[a-zA-Z]?$/.test(p)) return false; // Hausnummer raus
+    if (/^\d{5}$/.test(p)) return false; // PLZ raus
+    if (/Deutschland|Germany|Bayern|Bavaria|Oberbayern/i.test(p)) return false;
+    return true;
+  }).slice(0, 2).join(', ');
+
+  // Icon je nach Typ
+  let icon = '📍';
+  const type = result.type || '';
+  const cls = result.class || '';
+  if (cls === 'highway' || type === 'residential' || type === 'street') icon = '🛣️';
+  else if (cls === 'shop' || cls === 'amenity') icon = '🏪';
+  else if (cls === 'building' || type === 'house' || type === 'apartments') icon = '🏠';
+  else if (cls === 'railway' || type === 'station' || type === 'halt') icon = '🚉';
+  else if (cls === 'leisure' || cls === 'tourism') icon = '🏛️';
+
+  return { main, sub, icon };
+}
+
 function performGeocoding(query, dropdownId) {
   if (!query || query.length < 2) {
     document.getElementById(dropdownId).classList.remove('visible');
     return;
   }
 
-  fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&countrycodes=de`, {
+  // Strukturierte Suche: wenn "München" nicht im Query, füge es als Stadt-Bias hinzu
+  const hasCityHint = /münchen|munich|muc/i.test(query);
+  const searchQuery = hasCityHint ? query : query + ', München';
+
+  const params = new URLSearchParams({
+    format: 'json',
+    q: searchQuery,
+    limit: '6',
+    countrycodes: 'de',
+    viewbox: MUNICH_VIEWBOX,
+    bounded: '0',
+    addressdetails: '1',
+    'accept-language': 'de'
+  });
+
+  fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
     headers: { 'User-Agent': 'Huckepack/1.0' }
   })
     .then(r => r.json())
     .then(results => {
       const dropdown = document.getElementById(dropdownId);
       dropdown.innerHTML = '';
+
+      if (results.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'geocoding-item';
+        empty.innerHTML = '<span class="geo-icon">🔍</span><div class="geo-text"><div class="geo-main" style="color:#9ca3af;">Keine Ergebnisse gefunden</div><div class="geo-sub">Versuch es mit einer genaueren Adresse</div></div>';
+        dropdown.appendChild(empty);
+        dropdown.classList.add('visible');
+        return;
+      }
+
+      // Ergebnisse in München priorisieren
+      results.sort((a, b) => {
+        const aInMunich = a.display_name.toLowerCase().includes('münchen') ? 0 : 1;
+        const bInMunich = b.display_name.toLowerCase().includes('münchen') ? 0 : 1;
+        return aInMunich - bInMunich;
+      });
+
       results.forEach(r => {
+        const addr = formatGeoAddress(r);
         const item = document.createElement('div');
         item.className = 'geocoding-item';
-        item.textContent = r.display_name.split(',')[0];
-        item.onclick = () => selectGeocodingResult(parseFloat(r.lat), parseFloat(r.lon), r.display_name.split(',')[0], dropdownId);
+        item.innerHTML = '<span class="geo-icon">' + addr.icon + '</span><div class="geo-text"><div class="geo-main">' + escapeHtml(addr.main) + '</div>' + (addr.sub ? '<div class="geo-sub">' + escapeHtml(addr.sub) + '</div>' : '') + '</div>';
+        item.onclick = () => selectGeocodingResult(parseFloat(r.lat), parseFloat(r.lon), addr.main, dropdownId);
         dropdown.appendChild(item);
       });
       dropdown.classList.add('visible');
     })
     .catch(err => console.log('Geocoding error:', err));
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 }
 
 function selectGeocodingResult(lat, lon, name, dropdownId) {
@@ -2616,8 +2777,45 @@ function selectGeocodingResult(lat, lon, name, dropdownId) {
 
   if (inputId === 'map-dest') {
     destPos = { lat, lng: lon };
+    // Karte auf Ziel zentrieren
+    if (typeof map !== 'undefined' && map) {
+      map.setView([lat, lon], 15);
+      if (destMarker) map.removeLayer(destMarker);
+      destMarker = L.marker([lat, lon], {
+        icon: L.divIcon({
+          html: '<div style="width:20px;height:20px;background:#ef4444;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(239,68,68,0.5);"></div>',
+          iconSize: [20, 20], className: ''
+        })
+      }).addTo(map);
+    }
+  } else if (inputId === 'offer-dest') {
+    window._offerDestCoords = { lat, lng: lon };
+    updateOfferPricePreview();
+  } else if (inputId === 'search-dest') {
+    window._searchDestCoords = { lat, lng: lon };
+    updateSearchPricePreview();
   }
 }
+
+// Debounced Geocoding für Modal-Inputs
+let _geoDebounceTimers = {};
+function debouncedGeocode(value, dropdownId) {
+  clearTimeout(_geoDebounceTimers[dropdownId]);
+  _geoDebounceTimers[dropdownId] = setTimeout(() => {
+    performGeocoding(value, dropdownId);
+  }, 300);
+}
+
+// Koordinaten für Modal-Ziele speichern
+window._offerDestCoords = null;
+window._searchDestCoords = null;
+
+// Dropdown schließen bei Klick außerhalb
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.search-input-wrapper') && !e.target.closest('.ride-form-group')) {
+    document.querySelectorAll('.geocoding-dropdown').forEach(d => d.classList.remove('visible'));
+  }
+});
 
 // ===== SEARCH =====
 function startSearch() {
@@ -3153,10 +3351,15 @@ async function submitSearchRide() {
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
-    // Start live updates for this search request
-    startLiveRideUpdate(searchRef.id, { lat: userPos.lat, lng: userPos.lng });
+    // Ziel-Koordinaten (destPos kommt vom Map-Screen Geocoding)
+    const searchDestCoords = destPos ? { lat: destPos.lat, lng: destPos.lng } : { lat: userPos.lat, lng: userPos.lng };
 
-    alert('Fahrt gesucht! Du siehst jetzt verfügbare Angebote.');
+    // Start live updates for this search request
+    startLiveRideUpdate(searchRef.id, searchDestCoords);
+
+    // Aktive Fahrtsuche-Anzeige aktivieren
+    activateSearchDisplay(start, dest, searchRef.id, searchDestCoords);
+
     closeSearchRideModal();
     loadAvailableRides(); // Reload to show offers
   } catch (e) {
@@ -3201,6 +3404,11 @@ async function matchRide(rideId) {
       partnerName: ride.userName,
       driverUserId: isDriver ? auth.currentUser.uid : ride.userId,
     }, isDriver);
+
+    // Match gefunden — Fahrtsuche-Anzeige deaktivieren
+    if (activeSearchRideId === rideId || ride.userId === (auth.currentUser && auth.currentUser.uid)) {
+      deactivateSearchDisplay();
+    }
 
     loadAvailableRides();
   } catch (e) {
@@ -3398,6 +3606,95 @@ function closePrivacyScreen() { document.getElementById('privacy-screen-modal').
 // ===== LIVE RIDE UPDATE (alle 60s, Auto-Löschen bei <600m) =====
 let liveRideIntervals = {}; // rideId -> intervalId
 
+// ===== AKTIVE FAHRTSUCHE-ANZEIGE =====
+let activeSearchRideId = null;
+let activeSearchDestCoords = null;
+let activeSearchProximityInterval = null;
+
+function activateSearchDisplay(startName, destName, rideId, destCoords) {
+  activeSearchRideId = rideId;
+  activeSearchDestCoords = destCoords;
+
+  // UI aktualisieren
+  document.getElementById('active-search-start').textContent = startName || 'Aktueller Standort';
+  document.getElementById('active-search-dest').textContent = destName || '—';
+  document.getElementById('active-search-card').classList.add('visible');
+  document.getElementById('search-btn-wrap').style.display = 'none';
+
+  // Route auf der Karte beibehalten (routeLine bleibt sichtbar)
+  // Pulsing route line
+  if (routeLine) {
+    routeLine.setStyle({ color: '#16a34a', weight: 4, opacity: 0.9, dashArray: '10 8' });
+  }
+
+  // Proximity-Check: alle 10 Sekunden prüfen ob < 500m zum Ziel
+  startProximityCheck(rideId, destCoords);
+}
+
+function deactivateSearchDisplay() {
+  activeSearchRideId = null;
+  activeSearchDestCoords = null;
+
+  document.getElementById('active-search-card').classList.remove('visible');
+  document.getElementById('search-btn-wrap').style.display = '';
+
+  // Route-Stil zurücksetzen
+  if (routeLine) {
+    routeLine.setStyle({ color: '#16a34a', weight: 3, opacity: 0.7, dashArray: null });
+  }
+
+  stopProximityCheck();
+}
+
+function cancelSearchDisplay() {
+  if (!activeSearchRideId) { deactivateSearchDisplay(); return; }
+  if (confirm('Fahrtsuche wirklich abbrechen?')) {
+    // Ride in Firestore canceln
+    if (db && activeSearchRideId) {
+      db.collection('rides').doc(activeSearchRideId).update({ status: 'cancelled' });
+      stopLiveRideUpdate(activeSearchRideId);
+    }
+    deactivateSearchDisplay();
+    // Karte aufräumen
+    if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+    if (destMarker) { map.removeLayer(destMarker); destMarker = null; }
+    loadAvailableRides();
+  }
+}
+
+function startProximityCheck(rideId, destCoords) {
+  stopProximityCheck();
+  activeSearchProximityInterval = setInterval(async () => {
+    if (!userPos || !destCoords) return;
+    const distM = haversineDistance(userPos.lat, userPos.lng, destCoords.lat, destCoords.lng) * 1000;
+    console.log('Proximity-Check: ' + distM.toFixed(0) + 'm zum Ziel');
+    if (distM < 500) {
+      console.log('< 500m zum Ziel — Suche wird automatisch beendet');
+      // Ride auto-abschließen
+      if (db && rideId) {
+        try {
+          await db.collection('rides').doc(rideId).update({
+            status: 'completed_auto',
+            completedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        } catch(e) { console.error('Auto-complete Fehler:', e); }
+        stopLiveRideUpdate(rideId);
+      }
+      deactivateSearchDisplay();
+      if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+      if (destMarker) { map.removeLayer(destMarker); destMarker = null; }
+      loadAvailableRides();
+    }
+  }, 10000); // alle 10 Sekunden
+}
+
+function stopProximityCheck() {
+  if (activeSearchProximityInterval) {
+    clearInterval(activeSearchProximityInterval);
+    activeSearchProximityInterval = null;
+  }
+}
+
 function startLiveRideUpdate(rideId, destCoords) {
   // Stop any existing interval for this ride
   if (liveRideIntervals[rideId]) clearInterval(liveRideIntervals[rideId]);
@@ -3433,6 +3730,8 @@ function startLiveRideUpdate(rideId, destCoords) {
           completedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         stopLiveRideUpdate(rideId);
+        // Auch Fahrtsuche-Anzeige deaktivieren
+        if (activeSearchRideId === rideId) deactivateSearchDisplay();
         loadAvailableRides();
         return;
       }
