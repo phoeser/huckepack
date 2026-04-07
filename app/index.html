@@ -269,7 +269,7 @@
   .active-search-card {
     display: none;
     position: absolute;
-    bottom: 20px; left: 16px; right: 16px;
+    bottom: calc(80px + var(--safe-bottom)); left: 16px; right: 16px;
     z-index: 10;
     background: #fff;
     border-radius: 16px;
@@ -1370,7 +1370,7 @@
   </div>
 
   <!-- Default: Fahrt suchen Button -->
-  <div id="search-btn-wrap" style="position: absolute; bottom: 20px; left: 20px; right: 20px; z-index: 10;">
+  <div id="search-btn-wrap" style="position: absolute; bottom: calc(80px + var(--safe-bottom)); left: 20px; right: 20px; z-index: 10;">
     <button class="btn-primary" onclick="startSearch()" style="max-width: none;">Fahrt suchen</button>
   </div>
 
@@ -3506,16 +3506,28 @@ async function loadAvailableRides() {
 
     listEl.innerHTML = '';
 
-    if (snapshot.empty) {
-      listEl.innerHTML = '<div style="padding:16px;text-align:center;color:#999;font-size:14px;">Keine Fahrten verfügbar</div>';
-      return;
-    }
+    const now = new Date();
+    let hasRides = false;
 
     snapshot.forEach(doc => {
       const ride = doc.data();
+      // Filter out expired rides and clean them up
+      if (ride.expiresAt) {
+        const expiry = ride.expiresAt.toDate ? ride.expiresAt.toDate() : new Date(ride.expiresAt);
+        if (expiry <= now) {
+          // Auto-cleanup: mark expired ride
+          db.collection('rides').doc(doc.id).update({ status: 'expired' }).catch(() => {});
+          return; // Skip this ride
+        }
+      }
       const card = createAvailableRideCard(ride, doc.id);
       listEl.appendChild(card);
+      hasRides = true;
     });
+
+    if (!hasRides) {
+      listEl.innerHTML = '<div style="padding:16px;text-align:center;color:#999;font-size:14px;">Keine Fahrten verfügbar</div>';
+    }
   } catch (e) {
     console.error('Error loading available rides:', e);
   }
@@ -3581,34 +3593,33 @@ async function submitOfferRide() {
     return;
   }
 
+  if (!window._offerDestCoords) {
+    alert('Bitte wähle ein Ziel aus der Vorschlagsliste aus, damit die Position korrekt gespeichert wird.');
+    return;
+  }
+
   if (!db || !auth || !auth.currentUser) {
     alert('Nicht angemeldet');
     return;
   }
 
+  // Driver can only have 1 active ride at a time
+  if (window.activeDriverRide) {
+    alert('Du hast bereits eine aktive Fahrt. Beende diese zuerst.');
+    return;
+  }
+
+  const btn = document.querySelector('#offer-ride-modal .ride-create-btn');
   try {
-    const btn = event.target;
-    btn.disabled = true;
-    btn.textContent = '⏳ Wird gespeichert...';
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Wird gespeichert...'; }
 
     const userId = auth.currentUser.uid;
-    const distKm = window._offerDestCoords
-      ? haversineDistance(userPos.lat, userPos.lng, window._offerDestCoords.lat, window._offerDestCoords.lng) * 1.3
-      : estimateDistance(start, dest);
+    const distKm = haversineDistance(userPos.lat, userPos.lng, window._offerDestCoords.lat, window._offerDestCoords.lng) * 1.3;
 
-    // Destination coords: from Maps link or fallback to GPS
-    const destCoords = window._offerDestCoords
-      ? new firebase.firestore.GeoPoint(window._offerDestCoords.lat, window._offerDestCoords.lng)
-      : new firebase.firestore.GeoPoint(userPos.lat, userPos.lng);
+    const destCoords = new firebase.firestore.GeoPoint(window._offerDestCoords.lat, window._offerDestCoords.lng);
 
     const mapsLinkVal = document.getElementById('offer-maps-link').value || '';
-    const destCoordsForUpdate = window._offerDestCoords ? { lat: window._offerDestCoords.lat, lng: window._offerDestCoords.lng } : null;
-
-    // Driver can only have 1 active ride at a time
-    if (window.activeDriverRide) {
-      alert('Du hast bereits eine aktive Fahrt. Beende diese zuerst.');
-      return;
-    }
+    const destCoordsForUpdate = { lat: window._offerDestCoords.lat, lng: window._offerDestCoords.lng };
 
     const now = new Date();
     const expiresAt = new Date(now.getTime() + 60 * 60 * 1000); // 60 minutes from now
@@ -3661,9 +3672,7 @@ async function submitOfferRide() {
     alert('Fehler beim Speichern: ' + e.message);
     console.error(e);
   } finally {
-    const btn = event.target;
-    btn.disabled = false;
-    btn.textContent = 'Fahrt anbieten';
+    if (btn) { btn.disabled = false; btn.textContent = '🚗 Fahrt anbieten'; }
   }
 }
 
@@ -3698,33 +3707,29 @@ async function submitSearchRide() {
     return;
   }
 
+  // Ziel-Koordinaten aus Geocoding oder Map-Screen
+  const resolvedDestCoords = window._searchDestCoords || destPos || null;
+  if (!resolvedDestCoords) {
+    alert('Bitte wähle ein Ziel aus der Vorschlagsliste aus, damit die Position korrekt gespeichert wird.');
+    return;
+  }
+
+  // Rider can only have 1 active search at a time
+  if (window.activeRiderSearch) {
+    alert('Du hast bereits eine aktive Fahrtsuche. Bitte beende diese zuerst.');
+    return;
+  }
+
+  const btn = document.querySelector('#search-ride-modal .ride-create-btn');
   try {
-    const btn = event.target;
-    btn.disabled = true;
-    btn.textContent = '⏳ Wird gespeichert...';
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Wird gespeichert...'; }
 
     const userId = auth.currentUser.uid;
 
-    // Ziel-Koordinaten aus Geocoding oder Map-Screen oder Fallback
-    const resolvedDestCoords = window._searchDestCoords || destPos || null;
+    // Entfernung berechnen mit echten Koordinaten
+    const distKm = haversineDistance(userPos.lat, userPos.lng, resolvedDestCoords.lat, resolvedDestCoords.lng) * 1.3;
 
-    // Entfernung berechnen — mit echten Koordinaten wenn möglich
-    let distKm;
-    if (resolvedDestCoords) {
-      distKm = haversineDistance(userPos.lat, userPos.lng, resolvedDestCoords.lat, resolvedDestCoords.lng) * 1.3;
-    } else {
-      distKm = estimateDistance(start, dest);
-    }
-
-    const destGeoPoint = resolvedDestCoords
-      ? new firebase.firestore.GeoPoint(resolvedDestCoords.lat, resolvedDestCoords.lng)
-      : new firebase.firestore.GeoPoint(userPos.lat, userPos.lng);
-
-    // Rider can only have 1 active search at a time
-    if (window.activeRiderSearch) {
-      alert('Du hast bereits eine aktive Fahrtsuche. Bitte beende diese zuerst.');
-      return;
-    }
+    const destGeoPoint = new firebase.firestore.GeoPoint(resolvedDestCoords.lat, resolvedDestCoords.lng);
 
     const now = new Date();
     const expiresAt = new Date(now.getTime() + 90 * 60 * 1000); // 90 minutes from now
@@ -3778,9 +3783,7 @@ async function submitSearchRide() {
     alert('Fehler beim Speichern: ' + e.message);
     console.error(e);
   } finally {
-    const btn = event.target;
-    btn.disabled = false;
-    btn.textContent = 'Fahrt suchen';
+    if (btn) { btn.disabled = false; btn.textContent = '🔍 Fahrt suchen'; }
   }
 }
 
