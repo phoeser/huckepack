@@ -42,13 +42,13 @@
   }
 
   /* ===== SCREENS ===== */
-  .screen { display: none; position: absolute; inset: 0; flex-direction: column; }
+  .screen { display: none; position: absolute; inset: 0; flex-direction: column; overflow-y: auto; -webkit-overflow-scrolling: touch; }
   .screen.active { display: flex; }
 
   /* ===== LOGIN ===== */
   #login {
     background: linear-gradient(160deg, #166534, #14532d, var(--earth-800));
-    justify-content: center; align-items: center; padding: 40px 24px; text-align: center;
+    justify-content: center; align-items: center; padding: 40px 24px; text-align: center; overflow-y: auto;
   }
   .login-container { width: 100%; max-width: 360px; }
   .login-logo { font-size: 56px; margin-bottom: 12px; }
@@ -175,7 +175,7 @@
   .car-full { grid-column: 1 / -1; }
 
   /* ===== HOME ===== */
-  #home { background: var(--green-50); overflow-y: auto; }
+  #home { background: var(--green-50); overflow-y: auto; padding-bottom: 80px; }
   .home-header { padding: 56px 20px 0; display: flex; justify-content: space-between; align-items: center; }
   .greeting { font-size: 22px; font-weight: 700; }
   .greeting span { color: var(--green-700); }
@@ -321,7 +321,7 @@
   .rating-btn:active { background: var(--green-700); }
 
   /* ===== DRIVER SCREEN ===== */
-  #driver-screen { background: var(--green-50); overflow-y: auto; }
+  #driver-screen { background: var(--green-50); overflow-y: auto; padding-bottom: 80px; }
   .drv-header { padding: 16px 20px; background: #fff; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; }
   .drv-title { font-size: 16px; font-weight: 700; }
   .drv-status { font-size: 12px; color: #666; }
@@ -391,7 +391,7 @@
   .btn-accept:active { background: var(--green-700); }
 
   /* ===== PROFILE SCREEN ===== */
-  #profile-screen { background: var(--green-50); overflow-y: auto; }
+  #profile-screen { background: var(--green-50); overflow-y: auto; padding-bottom: 80px; }
   .profile-header { padding: 20px; text-align: center; background: linear-gradient(135deg, var(--green-800), var(--earth-700)); border-bottom: 1px solid #e5e7eb; }
   .profile-avatar {
     width: 64px; height: 64px; margin: 0 auto 12px; background: rgba(255,255,255,0.2);
@@ -1166,24 +1166,24 @@
         </div>
         <span class="profile-section-item-arrow">›</span>
       </div>
-      <div class="profile-section-item">
+      <div class="profile-section-item" onclick="openNotificationSettings()" style="cursor:pointer;">
         <span class="profile-section-item-icon">🔔</span>
         <div class="profile-section-item-text">
           <div class="profile-section-item-label">Benachrichtigungen</div>
-          <div class="profile-section-item-value">Aktiviert</div>
+          <div class="profile-section-item-value" id="notif-status-label">Aktiviert</div>
         </div>
         <span class="profile-section-item-arrow">›</span>
       </div>
     </div>
     <div class="profile-section">
-      <div class="profile-section-item">
+      <div class="profile-section-item" onclick="openAboutScreen()" style="cursor:pointer;">
         <span class="profile-section-item-icon">ℹ️</span>
         <span class="profile-section-item-text">
           <div class="profile-section-item-label">Über Huckepack</div>
         </span>
         <span class="profile-section-item-arrow">›</span>
       </div>
-      <div class="profile-section-item">
+      <div class="profile-section-item" onclick="openPrivacyScreen()" style="cursor:pointer;">
         <span class="profile-section-item-icon">🔒</span>
         <span class="profile-section-item-text">
           <div class="profile-section-item-label">Datenschutz</div>
@@ -1488,6 +1488,78 @@
   </div>
 </div>
 
+<!-- ===== BENACHRICHTIGUNGEN MODAL ===== -->
+<div class="profile-edit-modal" id="notification-settings-modal">
+  <div class="profile-edit-card" style="max-width: 380px;">
+    <h3>Benachrichtigungen</h3>
+    <div style="margin-bottom: 16px;">
+      <label style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid #f0f0f0;cursor:pointer;">
+        <span style="font-size:14px;color:#333;">Neue Mitfahrt-Anfragen</span>
+        <input type="checkbox" id="notif-ride-requests" checked style="width:20px;height:20px;accent-color:#22c55e;">
+      </label>
+      <label style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid #f0f0f0;cursor:pointer;">
+        <span style="font-size:14px;color:#333;">Match gefunden</span>
+        <input type="checkbox" id="notif-match" checked style="width:20px;height:20px;accent-color:#22c55e;">
+      </label>
+      <label style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid #f0f0f0;cursor:pointer;">
+        <span style="font-size:14px;color:#333;">Fahrt-Updates</span>
+        <input type="checkbox" id="notif-ride-updates" checked style="width:20px;height:20px;accent-color:#22c55e;">
+      </label>
+      <label style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid #f0f0f0;cursor:pointer;">
+        <span style="font-size:14px;color:#333;">Zahlungsbestätigungen</span>
+        <input type="checkbox" id="notif-payments" checked style="width:20px;height:20px;accent-color:#22c55e;">
+      </label>
+      <label style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;cursor:pointer;">
+        <span style="font-size:14px;color:#333;">E-Mail-Benachrichtigungen</span>
+        <input type="checkbox" id="notif-email" style="width:20px;height:20px;accent-color:#22c55e;">
+      </label>
+    </div>
+    <button class="pe-btn" onclick="saveNotificationSettings()">Speichern</button>
+    <button class="pe-btn-cancel" onclick="closeNotificationSettings()">Abbrechen</button>
+  </div>
+</div>
+
+<!-- ===== ÜBER HUCKEPACK OVERLAY ===== -->
+<div class="profile-edit-modal" id="about-screen-modal">
+  <div class="profile-edit-card" style="max-width: 400px; max-height: 80vh; overflow-y: auto;">
+    <div style="text-align:center;margin-bottom:16px;">
+      <div style="font-size:48px;">🍃</div>
+      <h3 style="font-size:22px;color:#166534;">Huckepack</h3>
+      <div style="color:#888;font-size:13px;">Version 1.0 · München</div>
+    </div>
+    <div style="font-size:14px;color:#333;line-height:1.6;">
+      <p style="margin-bottom:12px;"><strong>Huckepack</strong> ist die Mitfahr-App für kurze Strecken innerhalb der Stadt. Wir verbinden Fahrer und Mitfahrer spontan und unkompliziert — für günstigere Fahrten und weniger Autos auf der Straße.</p>
+      <p style="margin-bottom:12px;"><strong>Unsere Mission:</strong> Wir glauben, dass geteilte Mobilität den Stadtverkehr revolutionieren kann. Jede gemeinsame Fahrt spart CO₂ und macht die Stadt lebenswerter.</p>
+      <p style="margin-bottom:12px;"><strong>Wie funktioniert's?</strong> Fahrer geben ihr Ziel an und bieten freie Plätze an. Mitfahrer in der Nähe mit ähnlichem Ziel werden automatisch gematcht. Fair und transparent — mit Echtzeit-GPS und sicherer Bezahlung.</p>
+      <p style="margin-bottom:12px;"><strong>Sicherheit:</strong> Verifizierte Nutzer, SOS-Funktion, Bewertungssystem und GPS-Tracking für jede Fahrt.</p>
+      <div style="margin-top:16px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:12px;color:#999;text-align:center;">
+        Made with 💚 in München<br>
+        Kontakt: info@huckepack.app<br>
+        © 2026 Huckepack
+      </div>
+    </div>
+    <button class="pe-btn-cancel" onclick="closeAboutScreen()" style="margin-top:16px;">Schließen</button>
+  </div>
+</div>
+
+<!-- ===== DATENSCHUTZ OVERLAY ===== -->
+<div class="profile-edit-modal" id="privacy-screen-modal">
+  <div class="profile-edit-card" style="max-width: 400px; max-height: 80vh; overflow-y: auto;">
+    <h3 style="color:#166534;">Datenschutz</h3>
+    <div style="font-size:13px;color:#333;line-height:1.7;">
+      <p style="margin-bottom:12px;"><strong>1. Verantwortlicher</strong><br>Huckepack, München. Kontakt: datenschutz@huckepack.app</p>
+      <p style="margin-bottom:12px;"><strong>2. Welche Daten wir erheben</strong><br>Name, E-Mail-Adresse, GPS-Standort (nur während aktiver Nutzung), Fahrzeugdaten, Zahlungsinformationen (via Stripe), Bewertungen und Fahrtenhistorie.</p>
+      <p style="margin-bottom:12px;"><strong>3. Zweck der Datenverarbeitung</strong><br>Bereitstellung des Mitfahr-Services, Matching von Fahrern und Mitfahrern, Abrechnung und Bezahlung, Sicherheit und Betrugsprävention, Verbesserung unseres Services.</p>
+      <p style="margin-bottom:12px;"><strong>4. GPS-Standort</strong><br>Dein Standort wird nur erhoben, wenn du die App aktiv nutzt (Fahrt suchen oder anbieten). Er wird nicht im Hintergrund getrackt. Standortdaten aktiver Fahrten werden alle 60 Sekunden aktualisiert und nach Fahrtende gelöscht.</p>
+      <p style="margin-bottom:12px;"><strong>5. Datenspeicherung</strong><br>Deine Daten werden in Firebase (Google Cloud, EU-Server) gespeichert. Zahlungsdaten verarbeitet ausschließlich Stripe — wir speichern keine Kreditkartennummern.</p>
+      <p style="margin-bottom:12px;"><strong>6. Deine Rechte</strong><br>Du hast jederzeit das Recht auf Auskunft, Berichtigung, Löschung und Datenübertragbarkeit deiner personenbezogenen Daten gemäß DSGVO. Kontaktiere uns unter datenschutz@huckepack.app.</p>
+      <p style="margin-bottom:12px;"><strong>7. Datenweitergabe</strong><br>Wir geben deine Daten nur an Fahrer/Mitfahrer weiter, soweit für die Fahrt notwendig (Name, ungefährer Standort). Eine Weitergabe an Dritte erfolgt nicht, außer wenn gesetzlich vorgeschrieben.</p>
+      <p style="margin-bottom:0;"><strong>8. Kontakt</strong><br>Bei Fragen zum Datenschutz: datenschutz@huckepack.app</p>
+    </div>
+    <button class="pe-btn-cancel" onclick="closePrivacyScreen()" style="margin-top:16px;">Schließen</button>
+  </div>
+</div>
+
 <script>
 // ===== FIREBASE CONFIG (placeholder) =====
 const firebaseConfig = {
@@ -1522,6 +1594,18 @@ const appConfig = {
   platformFeeRider: 2.5,
   platformFeeDriver: 2.5,
 };
+
+// ===== STRIPE CONFIG =====
+const stripeConfig = {
+  publishableKey: '', // Hier Stripe Publishable Key eintragen (pk_test_... oder pk_live_...)
+  // Cloud Function URL für Checkout Sessions (wird nach Deploy der Cloud Function eingetragen)
+  checkoutUrl: ''
+};
+
+let stripe = null;
+if (stripeConfig.publishableKey) {
+  try { stripe = Stripe(stripeConfig.publishableKey); } catch(e) { console.log('Stripe nicht initialisiert'); }
+}
 
 // ===== PRICING CONFIG =====
 const pricingConfig = {
@@ -1690,10 +1774,37 @@ async function completeRideAndPay() {
       driverGets: breakdown.driverGets,
       platformFee: breakdown.platformFee,
       distanceKm: breakdown.distanceKm,
-      status: 'completed', // In production: 'pending' until Stripe confirms
+      status: stripe && stripeConfig.checkoutUrl ? 'pending' : 'completed',
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
+    // If Stripe is configured, redirect to Stripe Checkout
+    if (stripe && stripeConfig.checkoutUrl) {
+      const response = await fetch(stripeConfig.checkoutUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paymentId: paymentRef.id,
+          rideId: activeRide.rideId,
+          amount: Math.round(breakdown.riderPays * 100), // Cents
+          currency: 'eur',
+          riderEmail: userData.email,
+          description: 'Huckepack Fahrt: ' + breakdown.distanceKm + ' km',
+          driverId: activeRide.driverUserId || '',
+          driverAmount: Math.round(breakdown.driverGets * 100)
+        })
+      });
+      const session = await response.json();
+      if (session.url) {
+        // Redirect to Stripe Checkout
+        window.location.href = session.url;
+        return;
+      } else if (session.error) {
+        throw new Error(session.error);
+      }
+    }
+
+    // Fallback: Direct completion without Stripe (for testing / before Stripe setup)
     // Update ride status to completed
     if (activeRide.rideId) {
       await db.collection('rides').doc(activeRide.rideId).update({
@@ -2339,6 +2450,7 @@ function initApp() {
       { enableHighAccuracy: true }
     );
   }
+  loadNotifSettings();
   showScreen('login');
 }
 
@@ -3049,6 +3161,54 @@ window.setMode = function(mode) {
     showScreen('map-screen');
   }
 };
+
+// ===== BENACHRICHTIGUNGS-EINSTELLUNGEN =====
+let notifSettings = { rideRequests: true, match: true, rideUpdates: true, payments: true, email: false };
+
+function loadNotifSettings() {
+  const saved = localStorage.getItem('huckepack_notif');
+  if (saved) {
+    try { notifSettings = JSON.parse(saved); } catch(e) {}
+  }
+  updateNotifLabel();
+}
+
+function updateNotifLabel() {
+  const el = document.getElementById('notif-status-label');
+  if (!el) return;
+  const activeCount = Object.values(notifSettings).filter(v => v).length;
+  el.textContent = activeCount === 0 ? 'Deaktiviert' : activeCount + ' von 5 aktiv';
+}
+
+function openNotificationSettings() {
+  document.getElementById('notif-ride-requests').checked = notifSettings.rideRequests;
+  document.getElementById('notif-match').checked = notifSettings.match;
+  document.getElementById('notif-ride-updates').checked = notifSettings.rideUpdates;
+  document.getElementById('notif-payments').checked = notifSettings.payments;
+  document.getElementById('notif-email').checked = notifSettings.email;
+  document.getElementById('notification-settings-modal').classList.add('active');
+}
+
+function closeNotificationSettings() {
+  document.getElementById('notification-settings-modal').classList.remove('active');
+}
+
+function saveNotificationSettings() {
+  notifSettings.rideRequests = document.getElementById('notif-ride-requests').checked;
+  notifSettings.match = document.getElementById('notif-match').checked;
+  notifSettings.rideUpdates = document.getElementById('notif-ride-updates').checked;
+  notifSettings.payments = document.getElementById('notif-payments').checked;
+  notifSettings.email = document.getElementById('notif-email').checked;
+  localStorage.setItem('huckepack_notif', JSON.stringify(notifSettings));
+  updateNotifLabel();
+  closeNotificationSettings();
+}
+
+// ===== ÜBER HUCKEPACK & DATENSCHUTZ =====
+function openAboutScreen() { document.getElementById('about-screen-modal').classList.add('active'); }
+function closeAboutScreen() { document.getElementById('about-screen-modal').classList.remove('active'); }
+function openPrivacyScreen() { document.getElementById('privacy-screen-modal').classList.add('active'); }
+function closePrivacyScreen() { document.getElementById('privacy-screen-modal').classList.remove('active'); }
 
 // ===== LIVE RIDE UPDATE (alle 60s, Auto-Löschen bei <600m) =====
 let liveRideIntervals = {}; // rideId -> intervalId
