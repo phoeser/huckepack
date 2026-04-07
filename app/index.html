@@ -1573,11 +1573,11 @@
         </div>
         <span class="profile-section-item-arrow">›</span>
       </div>
-      <div class="profile-section-item">
+      <div class="profile-section-item" onclick="openPaymentSettings()" style="cursor:pointer;">
         <span class="profile-section-item-icon">💳</span>
         <div class="profile-section-item-text">
           <div class="profile-section-item-label">Zahlungsmethode</div>
-          <div class="profile-section-item-value">Stripe</div>
+          <div class="profile-section-item-value" id="payment-method-label">Testmodus aktiv</div>
         </div>
         <span class="profile-section-item-arrow">›</span>
       </div>
@@ -1803,7 +1803,7 @@
       <button class="ride-pay-btn" onclick="completeRideAndPay()" id="pay-ride-btn">
         💳 Angekommen — Jetzt bezahlen
       </button>
-      <div style="font-size: 11px; color: #999; margin-top: 8px;">Bezahlung per Stripe · sicher & verschlüsselt</div>
+      <div style="font-size: 11px; color: #999; margin-top: 8px;" id="payment-provider-hint">Bezahlung per Stripe · sicher & verschlüsselt</div>
     </div>
     <!-- Driver sees: waiting for payment -->
     <div id="active-ride-driver-actions" style="display: none;">
@@ -1839,6 +1839,45 @@
       </div>
     </div>
     <button class="ride-create-btn" onclick="closePaymentSuccess()">🏠 Zurück zur Startseite</button>
+  </div>
+</div>
+
+<!-- Zahlungseinstellungen Modal -->
+<div class="modal-overlay" id="payment-settings-modal">
+  <div class="modal-content">
+    <button class="modal-close" onclick="closePaymentSettings()">×</button>
+    <div class="modal-header">💳 Zahlung & Einnahmen</div>
+
+    <!-- Aktueller Status -->
+    <div id="payment-mode-banner" style="padding: 14px; border-radius: 12px; margin-bottom: 16px; font-size: 13px;">
+    </div>
+
+    <!-- Einnahmen/Ausgaben Übersicht -->
+    <div style="display: flex; gap: 10px; margin-bottom: 16px;">
+      <div style="flex:1; padding: 14px; background: #f0fdf4; border-radius: 12px; text-align: center;">
+        <div style="font-size: 11px; color: #666; margin-bottom: 4px;">Ausgaben (Mitfahrer)</div>
+        <div style="font-size: 20px; font-weight: 700; color: #166534;" id="payment-total-spent">0,00€</div>
+      </div>
+      <div style="flex:1; padding: 14px; background: #eff6ff; border-radius: 12px; text-align: center;">
+        <div style="font-size: 11px; color: #666; margin-bottom: 4px;">Einnahmen (Fahrer)</div>
+        <div style="font-size: 20px; font-weight: 700; color: #1e40af;" id="payment-total-earned">0,00€</div>
+      </div>
+    </div>
+
+    <!-- Letzte Transaktionen -->
+    <div style="font-weight: 600; font-size: 14px; margin-bottom: 10px;">Letzte Transaktionen</div>
+    <div id="payment-history-list" style="max-height: 200px; overflow-y: auto;">
+      <div style="text-align: center; padding: 20px; color: #9ca3af; font-size: 13px;">
+        Noch keine Transaktionen
+      </div>
+    </div>
+
+    <!-- Stripe Status -->
+    <div style="margin-top: 16px; padding: 14px; background: #f8fafc; border-radius: 12px; border: 1px solid #e5e7eb;">
+      <div style="font-weight: 600; font-size: 13px; margin-bottom: 6px;">Zahlungsanbieter: Stripe</div>
+      <div id="stripe-status-text" style="font-size: 12px; color: #666;">
+      </div>
+    </div>
   </div>
 </div>
 
@@ -2222,6 +2261,15 @@ function showActiveRide(rideData, isDriver) {
     document.getElementById('active-ride-rider-actions').style.display = 'block';
     document.getElementById('active-ride-driver-actions').style.display = 'none';
     document.getElementById('pay-ride-btn').classList.add('ready');
+    // Payment hint je nach Modus
+    const hint = document.getElementById('payment-provider-hint');
+    if (hint) {
+      if (stripe && stripeConfig.publishableKey) {
+        hint.textContent = 'Bezahlung per Stripe · sicher & verschlüsselt';
+      } else {
+        hint.textContent = '🧪 Testmodus — Zahlung wird simuliert';
+      }
+    }
   }
 
   activeRide.breakdown = breakdown;
@@ -2319,6 +2367,110 @@ function closePaymentSuccess() {
   updateUIWithUserData();
   showScreen('home');
   loadAvailableRides();
+}
+
+// ===== ZAHLUNGSEINSTELLUNGEN =====
+function openPaymentSettings() {
+  document.getElementById('payment-settings-modal').classList.add('active');
+
+  // Mode Banner
+  const banner = document.getElementById('payment-mode-banner');
+  const isStripeActive = stripe && stripeConfig.publishableKey;
+  if (isStripeActive) {
+    banner.style.background = '#d1fae5';
+    banner.style.color = '#065f46';
+    banner.innerHTML = '✅ <strong>Stripe aktiv</strong> — Echte Zahlungen sind aktiviert.';
+  } else {
+    banner.style.background = '#fef3c7';
+    banner.style.color = '#92400e';
+    banner.innerHTML = '🧪 <strong>Testmodus</strong> — Zahlungen werden simuliert. Stripe wird nach Konfiguration automatisch aktiviert.';
+  }
+
+  // Stripe Status
+  const stripeStatus = document.getElementById('stripe-status-text');
+  if (isStripeActive) {
+    stripeStatus.innerHTML = '✅ Verbunden — Zahlungen laufen über Stripe.<br><span style="font-size:11px;color:#999;">Key: ' + stripeConfig.publishableKey.substring(0, 12) + '...</span>';
+  } else {
+    stripeStatus.innerHTML = 'Noch nicht verbunden. Erstelle einen Account auf <strong>stripe.com</strong> und trage den Publishable Key im Code ein.';
+  }
+
+  // Totals
+  document.getElementById('payment-total-spent').textContent = (userData.totalCost || 0).toFixed(2) + '€';
+  document.getElementById('payment-total-earned').textContent = (userData.totalEarnings || 0).toFixed(2) + '€';
+
+  // Payment method label in profile
+  const label = document.getElementById('payment-method-label');
+  if (label) label.textContent = isStripeActive ? 'Stripe verbunden' : 'Testmodus aktiv';
+
+  // Load payment history
+  loadPaymentHistory();
+}
+
+function closePaymentSettings() {
+  document.getElementById('payment-settings-modal').classList.remove('active');
+}
+
+async function loadPaymentHistory() {
+  const list = document.getElementById('payment-history-list');
+  if (!db || !auth || !auth.currentUser) return;
+
+  try {
+    const uid = auth.currentUser.uid;
+    // Payments as rider
+    const riderSnap = await db.collection('payments')
+      .where('riderId', '==', uid)
+      .orderBy('createdAt', 'desc')
+      .limit(10)
+      .get();
+
+    // Payments as driver
+    const driverSnap = await db.collection('payments')
+      .where('driverId', '==', uid)
+      .orderBy('createdAt', 'desc')
+      .limit(10)
+      .get();
+
+    const payments = [];
+    riderSnap.forEach(doc => payments.push({ ...doc.data(), role: 'rider', id: doc.id }));
+    driverSnap.forEach(doc => payments.push({ ...doc.data(), role: 'driver', id: doc.id }));
+
+    // Sort by date
+    payments.sort((a, b) => {
+      const ta = a.createdAt ? (a.createdAt.toDate ? a.createdAt.toDate() : new Date(a.createdAt)) : new Date(0);
+      const tb = b.createdAt ? (b.createdAt.toDate ? b.createdAt.toDate() : new Date(b.createdAt)) : new Date(0);
+      return tb - ta;
+    });
+
+    if (payments.length === 0) {
+      list.innerHTML = '<div style="text-align:center;padding:20px;color:#9ca3af;font-size:13px;">Noch keine Transaktionen</div>';
+      return;
+    }
+
+    list.innerHTML = '';
+    payments.slice(0, 10).forEach(p => {
+      const isRider = p.role === 'rider';
+      const date = p.createdAt ? (p.createdAt.toDate ? p.createdAt.toDate() : new Date(p.createdAt)) : new Date();
+      const dateStr = date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
+      const amount = isRider ? (p.riderPays || 0).toFixed(2) : (p.driverGets || 0).toFixed(2);
+      const sign = isRider ? '-' : '+';
+      const color = isRider ? '#dc2626' : '#16a34a';
+      const icon = isRider ? '🚶' : '🚗';
+      const partner = isRider ? (p.driverName || 'Fahrer') : (p.riderName || 'Mitfahrer');
+      const status = p.status === 'completed' ? '✓' : '⏳';
+
+      const item = document.createElement('div');
+      item.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f0f0f0;font-size:13px;';
+      item.innerHTML = '<span style="font-size:18px;">' + icon + '</span>' +
+        '<div style="flex:1;"><div style="font-weight:500;">' + partner + ' <span style="color:#999;font-size:11px;">' + status + '</span></div>' +
+        '<div style="color:#999;font-size:11px;">' + dateStr + ' · ' + (p.distanceKm || 0).toFixed(1) + ' km</div></div>' +
+        '<div style="font-weight:700;color:' + color + ';">' + sign + amount + '€</div>';
+      list.appendChild(item);
+    });
+  } catch (e) {
+    console.log('Payment history error:', e);
+    // Firestore index might not exist yet — show friendly message
+    list.innerHTML = '<div style="text-align:center;padding:20px;color:#9ca3af;font-size:13px;">Transaktionen werden nach der ersten Fahrt angezeigt</div>';
+  }
 }
 
 function cancelActiveRideModal() {
@@ -4313,37 +4465,32 @@ async function handlePhotoUpload(event) {
     alert('Bitte ein Bild auswählen (JPG, PNG etc.)');
     return;
   }
-  if (file.size > 5 * 1024 * 1024) {
-    alert('Bild zu groß. Maximum: 5 MB');
+  if (file.size > 10 * 1024 * 1024) {
+    alert('Bild zu groß. Maximum: 10 MB');
     return;
   }
 
-  if (!storage || !auth || !auth.currentUser) {
+  if (!db || !auth || !auth.currentUser) {
     alert('Bitte zuerst anmelden.');
     return;
   }
 
   try {
-    // Resize image before upload (max 400x400)
-    const resizedBlob = await resizeImage(file, 400);
-
-    const uid = auth.currentUser.uid;
-    const ref = storage.ref('profile-photos/' + uid + '.jpg');
-
     // Show loading state
     const avatarText = document.getElementById('profile-avatar-text');
     if (avatarText) avatarText.textContent = '⏳';
 
-    await ref.put(resizedBlob, { contentType: 'image/jpeg' });
-    const downloadURL = await ref.getDownloadURL();
+    // Resize und als Base64 Data-URL konvertieren (max 200x200, ~15-30KB)
+    const base64DataURL = await resizeImageToBase64(file, 200, 0.8);
 
-    userData.photoURL = downloadURL;
+    // Direkt in Firestore speichern (kein Firebase Storage/Blaze nötig)
+    userData.photoURL = base64DataURL;
     await saveUserToFirestore();
     updateProfilePhoto();
 
-    console.log('Profilbild hochgeladen:', downloadURL);
+    console.log('Profilbild gespeichert (Base64, ' + Math.round(base64DataURL.length / 1024) + ' KB)');
   } catch (e) {
-    alert('Upload fehlgeschlagen: ' + e.message);
+    alert('Bild konnte nicht gespeichert werden: ' + e.message);
     console.error(e);
     updateProfilePhoto(); // Reset avatar
   }
@@ -4352,20 +4499,32 @@ async function handlePhotoUpload(event) {
   event.target.value = '';
 }
 
-function resizeImage(file, maxSize) {
-  return new Promise((resolve) => {
+function resizeImageToBase64(file, maxSize, quality) {
+  return new Promise((resolve, reject) => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     const img = new Image();
     img.onload = () => {
       let w = img.width, h = img.height;
-      if (w > h) { if (w > maxSize) { h = h * maxSize / w; w = maxSize; } }
-      else { if (h > maxSize) { w = w * maxSize / h; h = maxSize; } }
-      canvas.width = w;
-      canvas.height = h;
-      ctx.drawImage(img, 0, 0, w, h);
-      canvas.toBlob(resolve, 'image/jpeg', 0.85);
+      // Quadratischen Ausschnitt aus der Mitte (Crop)
+      const cropSize = Math.min(w, h);
+      const cropX = (w - cropSize) / 2;
+      const cropY = (h - cropSize) / 2;
+      canvas.width = maxSize;
+      canvas.height = maxSize;
+      ctx.drawImage(img, cropX, cropY, cropSize, cropSize, 0, 0, maxSize, maxSize);
+      const dataURL = canvas.toDataURL('image/jpeg', quality);
+      // Firestore Dokument-Limit: ~1MB, unser Bild sollte ~15-40KB sein
+      if (dataURL.length > 500000) {
+        // Falls zu groß, nochmal mit niedrigerer Qualität
+        const smallerURL = canvas.toDataURL('image/jpeg', 0.5);
+        resolve(smallerURL);
+      } else {
+        resolve(dataURL);
+      }
+      URL.revokeObjectURL(img.src);
     };
+    img.onerror = () => reject(new Error('Bild konnte nicht geladen werden'));
     img.src = URL.createObjectURL(file);
   });
 }
