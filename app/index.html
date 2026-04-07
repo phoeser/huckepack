@@ -94,6 +94,12 @@
     cursor: pointer; font-family: inherit; margin-top: 16px;
   }
   .login-form.hidden { display: none; }
+  .pw-wrapper { position: relative; width: 100%; margin-bottom: 12px; }
+  .pw-wrapper .login-input, .pw-wrapper .pe-input { margin-bottom: 0; padding-right: 44px; }
+  .pw-toggle { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 4px; color: rgba(255,255,255,0.5); font-size: 18px; line-height: 1; }
+  .pw-toggle:hover { color: rgba(255,255,255,0.8); }
+  .profile-edit-card .pw-wrapper .pw-toggle { color: #999; }
+  .profile-edit-card .pw-wrapper .pw-toggle:hover { color: #333; }
   .login-forgot { background: none; border: none; color: rgba(255,255,255,0.5); font-size: 13px; cursor: pointer; font-family: inherit; margin-top: -4px; margin-bottom: 12px; text-align: right; display: block; width: 100%; }
   .login-forgot:hover { color: #fff; }
   .login-success-msg { background: rgba(34,197,94,0.2); color: #bbf7d0; padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 12px; display: none; text-align: center; }
@@ -786,7 +792,10 @@
       </button>
       <div class="login-divider">oder</div>
       <input type="email" class="login-input" placeholder="Email-Adresse" id="login-email">
-      <input type="password" class="login-input" placeholder="Passwort" id="login-password">
+      <div class="pw-wrapper">
+        <input type="password" class="login-input" placeholder="Passwort" id="login-password">
+        <button type="button" class="pw-toggle" onclick="togglePwVisibility('login-password', this)">👁</button>
+      </div>
       <button class="login-forgot" onclick="forgotPassword()">Passwort vergessen?</button>
       <div class="login-success-msg" id="forgot-success-msg"></div>
       <button class="login-submit" onclick="proceedFromLogin('email')">Anmelden</button>
@@ -796,7 +805,11 @@
     <div id="register-form" class="login-form hidden">
       <input type="text" class="login-input" placeholder="Name" id="register-name">
       <input type="email" class="login-input" placeholder="Email-Adresse" id="register-email">
-      <input type="password" class="login-input" placeholder="Passwort" id="register-password">
+      <div class="pw-wrapper">
+        <input type="password" class="login-input" placeholder="Passwort (mind. 7 Zeichen, Buchstabe + Zahl)" id="register-password">
+        <button type="button" class="pw-toggle" onclick="togglePwVisibility('register-password', this)">👁</button>
+      </div>
+      <div id="register-error" style="color:#ff6b6b;font-size:13px;text-align:center;margin:8px 0;padding:8px;background:rgba(255,0,0,0.1);border-radius:8px;display:none;"></div>
       <button class="login-submit" onclick="proceedFromLogin('register')">Registrieren</button>
     </div>
 
@@ -1456,9 +1469,18 @@
 <div class="profile-edit-modal" id="change-password-modal">
   <div class="profile-edit-card">
     <h3>Passwort ändern</h3>
-    <input class="pe-input" id="pw-current" type="password" placeholder="Aktuelles Passwort">
-    <input class="pe-input" id="pw-new" type="password" placeholder="Neues Passwort">
-    <input class="pe-input" id="pw-confirm" type="password" placeholder="Neues Passwort bestätigen">
+    <div class="pw-wrapper">
+      <input class="pe-input" id="pw-current" type="password" placeholder="Aktuelles Passwort">
+      <button type="button" class="pw-toggle" onclick="togglePwVisibility('pw-current', this)">👁</button>
+    </div>
+    <div class="pw-wrapper">
+      <input class="pe-input" id="pw-new" type="password" placeholder="Neues Passwort">
+      <button type="button" class="pw-toggle" onclick="togglePwVisibility('pw-new', this)">👁</button>
+    </div>
+    <div class="pw-wrapper">
+      <input class="pe-input" id="pw-confirm" type="password" placeholder="Neues Passwort bestätigen">
+      <button type="button" class="pw-toggle" onclick="togglePwVisibility('pw-confirm', this)">👁</button>
+    </div>
     <div class="pe-error" id="change-pw-error"></div>
     <div class="pe-success" id="change-pw-success"></div>
     <button class="pe-btn" onclick="saveChangePassword()">Passwort ändern</button>
@@ -1939,20 +1961,47 @@ function validatePassword(password) {
   return null;
 }
 
-function showLoginError(msg) {
+function showLoginError(msg, target) {
+  // Determine which form is active
+  const loginForm = document.getElementById('login-form');
+  const regForm = document.getElementById('register-form');
+  const isRegister = target === 'register' || loginForm.classList.contains('hidden');
+
+  if (isRegister) {
+    // Show in register form's dedicated error div
+    const regErr = document.getElementById('register-error');
+    if (regErr) {
+      regErr.textContent = msg;
+      regErr.style.display = 'block';
+      setTimeout(() => { regErr.style.display = 'none'; }, 6000);
+    }
+    return;
+  }
+
+  // Login form error
   let errEl = document.getElementById('login-error');
   if (!errEl) {
     errEl = document.createElement('div');
     errEl.id = 'login-error';
     errEl.style.cssText = 'color:#ff6b6b;font-size:13px;text-align:center;margin:8px 0;padding:8px;background:rgba(255,0,0,0.1);border-radius:8px;';
-    const loginForm = document.getElementById('login-form');
-    const regForm = document.getElementById('register-form');
-    const activeForm = loginForm.style.display !== 'none' ? loginForm : regForm;
-    activeForm.appendChild(errEl);
+    loginForm.appendChild(errEl);
   }
   errEl.textContent = msg;
   errEl.style.display = 'block';
   setTimeout(() => { if(errEl) errEl.style.display = 'none'; }, 5000);
+}
+
+// ===== PASSWORT SICHTBARKEIT TOGGLE =====
+function togglePwVisibility(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  if (input.type === 'password') {
+    input.type = 'text';
+    btn.textContent = '🙈';
+  } else {
+    input.type = 'password';
+    btn.textContent = '👁';
+  }
 }
 
 async function proceedFromLogin(method) {
@@ -2011,9 +2060,10 @@ async function proceedFromLogin(method) {
     const name = document.getElementById('register-name').value.trim();
     const email = document.getElementById('register-email').value.trim();
     const password = document.getElementById('register-password').value;
-    if (!name || !email || !password) { showLoginError('Bitte alle Felder ausfüllen.'); return; }
+    if (!name || !email || !password) { showLoginError('Bitte alle Felder ausfüllen.', 'register'); return; }
+    if (!email.includes('@') || !email.includes('.')) { showLoginError('Bitte eine gültige E-Mail-Adresse eingeben.', 'register'); return; }
     const pwError = validatePassword(password);
-    if (pwError) { showLoginError(pwError); return; }
+    if (pwError) { showLoginError(pwError, 'register'); return; }
     if (auth) {
       try {
         const result = await auth.createUserWithEmailAndPassword(email, password);
@@ -2028,12 +2078,14 @@ async function proceedFromLogin(method) {
         // Hinweis auf Verifizierung zeigen
         setTimeout(() => showVerificationBanner(), 1500);
       } catch (e) {
-        if (e.code === 'auth/email-already-in-use') showLoginError('Diese E-Mail ist bereits registriert.');
-        else if (e.code === 'auth/weak-password') showLoginError('Passwort ist zu schwach.');
-        else showLoginError('Registrierung fehlgeschlagen: ' + e.message);
+        if (e.code === 'auth/email-already-in-use') showLoginError('Diese E-Mail ist bereits registriert. Melde dich stattdessen an.', 'register');
+        else if (e.code === 'auth/weak-password') showLoginError('Passwort ist zu schwach. Mindestens 7 Zeichen mit Buchstabe und Zahl.', 'register');
+        else if (e.code === 'auth/invalid-email') showLoginError('Ungültige E-Mail-Adresse.', 'register');
+        else if (e.code === 'auth/network-request-failed') showLoginError('Keine Internetverbindung. Bitte prüfe dein Netzwerk.', 'register');
+        else showLoginError('Registrierung fehlgeschlagen: ' + e.message, 'register');
       }
     } else {
-      showLoginError('Firebase ist nicht konfiguriert.');
+      showLoginError('Firebase ist nicht konfiguriert.', 'register');
     }
     return;
   }
