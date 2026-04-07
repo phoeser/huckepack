@@ -13,6 +13,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
 <script src="https://js.stripe.com/v3/"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
@@ -1109,8 +1110,14 @@
   <div class="profile-header">
     <button class="back-btn" onclick="showScreen('home')" style="position: absolute; left: 16px;">‹</button>
     <div style="flex: 1;">
-      <div class="profile-avatar" id="profile-avatar">P</div>
+      <div class="profile-avatar" id="profile-avatar" onclick="triggerPhotoUpload()" style="cursor:pointer;position:relative;overflow:hidden;">
+        <span id="profile-avatar-text">P</span>
+        <img id="profile-avatar-img" src="" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%;">
+        <div style="position:absolute;bottom:0;right:0;background:var(--green-600);color:#fff;width:22px;height:22px;border-radius:50%;font-size:12px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;">📷</div>
+      </div>
+      <input type="file" id="photo-upload-input" accept="image/*" style="display:none;" onchange="handlePhotoUpload(event)">
       <div class="profile-name" id="profile-name">—</div>
+      <div id="profile-bio" style="font-size:13px;color:rgba(255,255,255,0.7);margin-top:4px;"></div>
     </div>
   </div>
 
@@ -1437,6 +1444,9 @@
   <div class="profile-edit-card">
     <h3>Persönliche Daten</h3>
     <input class="pe-input" id="edit-name" placeholder="Name">
+    <input class="pe-input" id="edit-phone" type="tel" placeholder="Telefonnummer (optional)">
+    <input class="pe-input" id="edit-birthyear" type="number" min="1940" max="2010" placeholder="Geburtsjahr (optional)">
+    <textarea class="pe-input" id="edit-bio" placeholder="Über mich (optional, max 120 Zeichen)" maxlength="120" style="resize:none;height:60px;"></textarea>
     <select class="pe-input" id="edit-mode" style="appearance: auto;">
       <option value="walker">🚶 Mitfahrer</option>
       <option value="driver">🚗 Fahrer</option>
@@ -1576,14 +1586,69 @@ let db = null;
 let auth = null;
 
 // Only initialize Firebase if config is properly set
+let storage = null;
+
 if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
   try {
     firebase.initializeApp(firebaseConfig);
     auth = firebase.auth();
     db = firebase.firestore();
+    storage = firebase.storage();
+    // Persistenz: Nutzer bleibt angemeldet (über Browser-Session hinaus)
+    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
   } catch (e) {
     console.log("Firebase not configured yet");
   }
+}
+
+// ===== SESSION TIMEOUT (60 Minuten Inaktivität) =====
+let sessionTimeoutTimer = null;
+const SESSION_TIMEOUT_MS = 60 * 60 * 1000; // 60 Minuten
+
+function resetSessionTimeout() {
+  if (sessionTimeoutTimer) clearTimeout(sessionTimeoutTimer);
+  sessionTimeoutTimer = setTimeout(() => {
+    if (window.authState.isLoggedIn) {
+      alert('Du wurdest wegen Inaktivität abgemeldet.');
+      logoutUser();
+    }
+  }, SESSION_TIMEOUT_MS);
+}
+
+// Reset bei jeder Nutzerinteraktion
+['click', 'touchstart', 'keydown', 'scroll'].forEach(evt => {
+  document.addEventListener(evt, resetSessionTimeout, { passive: true });
+});
+
+// ===== AUTO-LOGIN via onAuthStateChanged =====
+if (auth) {
+  auth.onAuthStateChanged(async (user) => {
+    if (user && !window.authState.isLoggedIn) {
+      // User ist schon eingeloggt (z.B. nach Page Reload)
+      userData.name = user.displayName || user.email.split('@')[0];
+      userData.email = user.email;
+      window.authState.isLoggedIn = true;
+      window.authState.user = user;
+      window.authState.method = user.providerData[0]?.providerId === 'google.com' ? 'google' : 'email';
+
+      // Daten aus Firestore laden
+      const found = await loadUserFromFirestore();
+      if (found) {
+        updateUIWithUserData();
+        showScreen('home');
+      } else {
+        showScreen('home');
+      }
+
+      // Verifizierungs-Check
+      if (!user.emailVerified && user.providerData[0]?.providerId === 'password') {
+        setTimeout(() => showVerificationBanner(), 1000);
+      }
+
+      resetSessionTimeout();
+      console.log('Auto-Login: Willkommen zurück, ' + userData.name);
+    }
+  });
 }
 
 // ===== PLATFORM CONFIG =====
@@ -2027,6 +2092,10 @@ let rideInProgress = false;
 let userData = {
   name: '',
   email: '',
+  phone: '',
+  bio: '',
+  birthYear: '',
+  photoURL: '',
   mode: 'walker',
   trips: 0,
   co2Saved: 0,
@@ -2232,6 +2301,10 @@ async function saveUserToFirestore() {
     await db.collection('users').doc(uid).set({
       name: userData.name || '',
       email: userData.email || auth.currentUser.email || '',
+      phone: userData.phone || '',
+      bio: userData.bio || '',
+      birthYear: userData.birthYear || '',
+      photoURL: userData.photoURL || '',
       mode: userData.mode || 'walker',
       trips: userData.trips || 0,
       co2Saved: userData.co2Saved || 0,
@@ -2261,6 +2334,10 @@ async function loadUserFromFirestore() {
       const data = doc.data();
       userData.name = data.name || auth.currentUser.displayName || 'Nutzer';
       userData.email = data.email || auth.currentUser.email || '';
+      userData.phone = data.phone || '';
+      userData.bio = data.bio || '';
+      userData.birthYear = data.birthYear || '';
+      userData.photoURL = data.photoURL || '';
       userData.mode = data.mode || 'walker';
       userData.trips = data.trips || 0;
       userData.co2Saved = data.co2Saved || 0;
@@ -2290,6 +2367,10 @@ async function logoutUser() {
     // Reset user data
     userData.name = '';
     userData.email = '';
+    userData.phone = '';
+    userData.bio = '';
+    userData.birthYear = '';
+    userData.photoURL = '';
     userData.mode = 'walker';
     userData.trips = 0;
     userData.co2Saved = 0;
@@ -2392,9 +2473,10 @@ function updateUIWithUserData() {
   const el = (id) => document.getElementById(id);
 
   if (el('user-greeting-name')) el('user-greeting-name').textContent = userData.name || 'Nutzer';
-  if (el('home-avatar')) el('home-avatar').textContent = initial;
-  if (el('profile-avatar')) el('profile-avatar').textContent = initial;
   if (el('profile-name')) el('profile-name').textContent = userData.name || 'Nutzer';
+
+  // Update photo or initial avatar
+  if (typeof updateProfilePhoto === 'function') updateProfilePhoto();
   if (el('profile-trips')) el('profile-trips').textContent = userData.trips || 0;
   if (el('profile-rating')) el('profile-rating').textContent = userData.rating || 0;
   if (el('stat-trips')) el('stat-trips').textContent = userData.trips || 0;
@@ -3162,6 +3244,109 @@ window.setMode = function(mode) {
   }
 };
 
+// ===== PROFILBILD UPLOAD =====
+function triggerPhotoUpload() {
+  document.getElementById('photo-upload-input').click();
+}
+
+async function handlePhotoUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  // Validierung
+  if (!file.type.startsWith('image/')) {
+    alert('Bitte ein Bild auswählen (JPG, PNG etc.)');
+    return;
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    alert('Bild zu groß. Maximum: 5 MB');
+    return;
+  }
+
+  if (!storage || !auth || !auth.currentUser) {
+    alert('Bitte zuerst anmelden.');
+    return;
+  }
+
+  try {
+    // Resize image before upload (max 400x400)
+    const resizedBlob = await resizeImage(file, 400);
+
+    const uid = auth.currentUser.uid;
+    const ref = storage.ref('profile-photos/' + uid + '.jpg');
+
+    // Show loading state
+    const avatarText = document.getElementById('profile-avatar-text');
+    if (avatarText) avatarText.textContent = '⏳';
+
+    await ref.put(resizedBlob, { contentType: 'image/jpeg' });
+    const downloadURL = await ref.getDownloadURL();
+
+    userData.photoURL = downloadURL;
+    await saveUserToFirestore();
+    updateProfilePhoto();
+
+    console.log('Profilbild hochgeladen:', downloadURL);
+  } catch (e) {
+    alert('Upload fehlgeschlagen: ' + e.message);
+    console.error(e);
+    updateProfilePhoto(); // Reset avatar
+  }
+
+  // Reset file input
+  event.target.value = '';
+}
+
+function resizeImage(file, maxSize) {
+  return new Promise((resolve) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    img.onload = () => {
+      let w = img.width, h = img.height;
+      if (w > h) { if (w > maxSize) { h = h * maxSize / w; w = maxSize; } }
+      else { if (h > maxSize) { w = w * maxSize / h; h = maxSize; } }
+      canvas.width = w;
+      canvas.height = h;
+      ctx.drawImage(img, 0, 0, w, h);
+      canvas.toBlob(resolve, 'image/jpeg', 0.85);
+    };
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+function updateProfilePhoto() {
+  const avatarText = document.getElementById('profile-avatar-text');
+  const avatarImg = document.getElementById('profile-avatar-img');
+  const homeAvatar = document.getElementById('home-avatar');
+
+  if (userData.photoURL) {
+    // Profile screen: show photo
+    if (avatarImg) { avatarImg.src = userData.photoURL; avatarImg.style.display = 'block'; }
+    if (avatarText) avatarText.style.display = 'none';
+    // Home screen: show photo as background
+    if (homeAvatar) {
+      homeAvatar.textContent = '';
+      homeAvatar.style.backgroundImage = 'url(' + userData.photoURL + ')';
+      homeAvatar.style.backgroundSize = 'cover';
+      homeAvatar.style.backgroundPosition = 'center';
+    }
+  } else {
+    // Fallback: show initial
+    const initial = userData.name ? userData.name.charAt(0).toUpperCase() : '?';
+    if (avatarText) { avatarText.textContent = initial; avatarText.style.display = ''; }
+    if (avatarImg) avatarImg.style.display = 'none';
+    if (homeAvatar) {
+      homeAvatar.textContent = initial;
+      homeAvatar.style.backgroundImage = '';
+    }
+  }
+
+  // Update bio display
+  const bioEl = document.getElementById('profile-bio');
+  if (bioEl) bioEl.textContent = userData.bio || '';
+}
+
 // ===== BENACHRICHTIGUNGS-EINSTELLUNGEN =====
 let notifSettings = { rideRequests: true, match: true, rideUpdates: true, payments: true, email: false };
 
@@ -3407,6 +3592,9 @@ async function saveChangePassword() {
 // ===== PROFIL BEARBEITEN =====
 function openEditProfile() {
   document.getElementById('edit-name').value = userData.name || '';
+  document.getElementById('edit-phone').value = userData.phone || '';
+  document.getElementById('edit-birthyear').value = userData.birthYear || '';
+  document.getElementById('edit-bio').value = userData.bio || '';
   document.getElementById('edit-mode').value = userData.mode || 'walker';
   document.getElementById('edit-profile-error').style.display = 'none';
   document.getElementById('edit-profile-success').style.display = 'none';
@@ -3419,6 +3607,9 @@ function closeEditProfile() {
 
 async function saveEditProfile() {
   const name = document.getElementById('edit-name').value.trim();
+  const phone = document.getElementById('edit-phone').value.trim();
+  const birthYear = document.getElementById('edit-birthyear').value.trim();
+  const bio = document.getElementById('edit-bio').value.trim();
   const mode = document.getElementById('edit-mode').value;
   const errEl = document.getElementById('edit-profile-error');
   const succEl = document.getElementById('edit-profile-success');
@@ -3432,6 +3623,9 @@ async function saveEditProfile() {
   }
 
   userData.name = name;
+  userData.phone = phone;
+  userData.birthYear = birthYear;
+  userData.bio = bio;
   userData.mode = mode;
 
   // Update Firebase Auth displayName
@@ -3497,7 +3691,9 @@ function updateProfileSummaries() {
   const carEl = document.getElementById('profile-car-summary');
   if (infoEl) {
     const modeNames = { walker: 'Mitfahrer', driver: 'Fahrer', both: 'Beides' };
-    infoEl.textContent = (userData.name || '—') + ' · ' + (modeNames[userData.mode] || 'Mitfahrer');
+    let summary = (userData.name || '—') + ' · ' + (modeNames[userData.mode] || 'Mitfahrer');
+    if (userData.phone) summary += ' · ' + userData.phone;
+    infoEl.textContent = summary;
   }
   if (carEl) {
     if (userData.car.brand && userData.car.model) {
