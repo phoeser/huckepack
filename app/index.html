@@ -1710,8 +1710,9 @@
 
     <div class="ride-form-group" style="position: relative;">
       <label>Ziel</label>
-      <input type="text" id="offer-dest" placeholder="z.B. Marienplatz, Leopoldstraße 10..." oninput="updateOfferPricePreview(); debouncedGeocode(this.value, 'offer-dest-dropdown');" autocomplete="off">
+      <input type="text" id="offer-dest" placeholder="z.B. Marienplatz, Leopoldstraße 10..." oninput="window._offerDestCoords = null; hideOfferDestHint(); updateOfferPricePreview(); debouncedGeocode(this.value, 'offer-dest-dropdown');" autocomplete="off">
       <div class="geocoding-dropdown" id="offer-dest-dropdown"></div>
+      <div id="offer-dest-hint" style="display:none; font-size:12px; color:#ef4444; margin-top:4px;">Bitte wähle ein Ziel aus der Vorschlagsliste</div>
     </div>
 
     <div class="ride-form-group">
@@ -3040,7 +3041,14 @@ function formatGeoAddress(result) {
 
 function performGeocoding(query, dropdownId) {
   if (!query || query.length < 2) {
-    document.getElementById(dropdownId).classList.remove('visible');
+    const dropdown = document.getElementById(dropdownId);
+    if (query && query.length === 1) {
+      // Zeige Tipp-Hinweis bei nur 1 Zeichen
+      dropdown.innerHTML = '<div class="geocoding-item"><span class="geo-icon">⌨️</span><div class="geo-text"><div class="geo-main" style="color:#9ca3af;">Tippe weiter für Vorschläge...</div></div></div>';
+      dropdown.classList.add('visible');
+    } else {
+      dropdown.classList.remove('visible');
+    }
     return;
   }
 
@@ -3130,6 +3138,12 @@ function selectGeocodingResult(lat, lon, name, dropdownId) {
     }
   } else if (inputId === 'offer-dest') {
     window._offerDestCoords = { lat, lng: lon };
+    hideOfferDestHint();
+    // Visuelles Feedback: grüner Rand zeigt erfolgreiche Auswahl
+    const offerInput = document.getElementById('offer-dest');
+    offerInput.style.borderColor = '#16a34a';
+    offerInput.style.background = '#f0fdf4';
+    setTimeout(() => { offerInput.style.borderColor = ''; offerInput.style.background = ''; }, 2000);
     updateOfferPricePreview();
   } else if (inputId === 'search-dest') {
     window._searchDestCoords = { lat, lng: lon };
@@ -3143,12 +3157,17 @@ function debouncedGeocode(value, dropdownId) {
   clearTimeout(_geoDebounceTimers[dropdownId]);
   _geoDebounceTimers[dropdownId] = setTimeout(() => {
     performGeocoding(value, dropdownId);
-  }, 300);
+  }, 200);
 }
 
 // Koordinaten für Modal-Ziele speichern
 window._offerDestCoords = null;
 window._searchDestCoords = null;
+
+function hideOfferDestHint() {
+  const hint = document.getElementById('offer-dest-hint');
+  if (hint) hint.style.display = 'none';
+}
 
 // Dropdown schließen bei Klick außerhalb
 document.addEventListener('click', function(e) {
@@ -3573,9 +3592,13 @@ function openOfferRideModal() {
   document.getElementById('offer-ride-modal').classList.add('active');
   // Reset fields
   document.getElementById('offer-dest').value = '';
+  document.getElementById('offer-maps-link').value = '';
   window._offerDestCoords = null;
+  hideOfferDestHint();
   const preview = document.getElementById('offer-price-preview');
   if (preview) preview.style.display = 'none';
+  // Focus auf Ziel-Input nach kurzer Verzögerung
+  setTimeout(() => document.getElementById('offer-dest').focus(), 300);
 }
 
 function closeOfferRideModal() {
@@ -3594,7 +3617,15 @@ async function submitOfferRide() {
   }
 
   if (!window._offerDestCoords) {
-    alert('Bitte wähle ein Ziel aus der Vorschlagsliste aus, damit die Position korrekt gespeichert wird.');
+    // Inline-Hinweis statt aggressivem Alert
+    const hint = document.getElementById('offer-dest-hint');
+    if (hint) { hint.style.display = 'block'; }
+    document.getElementById('offer-dest').focus();
+    // Geocoding erneut auslösen falls Text vorhanden
+    const destVal = document.getElementById('offer-dest').value;
+    if (destVal && destVal.length >= 2) {
+      performGeocoding(destVal, 'offer-dest-dropdown');
+    }
     return;
   }
 
