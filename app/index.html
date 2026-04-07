@@ -223,7 +223,9 @@
   .modal-overlay.active { display: flex; }
   .modal-content {
     background: #fff; border-radius: 20px 20px 0 0; width: 100%; max-height: 85vh;
-    overflow-y: auto; padding: 24px 20px; padding-bottom: calc(24px + var(--safe-bottom));
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+    padding: 24px 20px; padding-bottom: calc(80px + var(--safe-bottom));
+    position: relative;
   }
   .modal-header { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
   .modal-close {
@@ -247,7 +249,7 @@
   .geocoding-dropdown {
     position: absolute; top: 100%; left: 0; right: 0; background: #fff;
     border: 1px solid #e5e7eb; border-radius: 0 0 12px 12px; max-height: 260px; overflow-y: auto;
-    display: none; z-index: 100; box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    display: none; z-index: 1100; box-shadow: 0 8px 24px rgba(0,0,0,0.12);
     margin-top: -1px;
   }
   .geocoding-dropdown.visible { display: block; }
@@ -544,7 +546,7 @@
   .share-copy-btn:active { background: var(--green-700); }
 
   /* Planned ride creation form */
-  .ride-form-group { margin-bottom: 16px; }
+  .ride-form-group { margin-bottom: 16px; position: relative; }
   .ride-form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
   .ride-form-group input, .ride-form-group select {
     width: 100%; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 8px;
@@ -579,6 +581,7 @@
 
   /* Screen transitions - fade in/out */
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
   @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
   .screen.active { animation: fadeIn 0.3s ease-out; }
   .fade-in { animation: fadeIn 0.3s ease-out; }
@@ -1282,7 +1285,36 @@
     </div>
   </div>
 
-  <!-- Available Rides / Quick Actions Section (Task 2) -->
+  <!-- Active Search (Mitfahrer only, shown when searching) — TOP PRIORITY -->
+  <div id="home-active-search-section" style="display: none;">
+    <div class="active-ride-banner" style="background: linear-gradient(135deg, var(--teal-500), var(--teal-600)); margin: 16px 20px 12px;">
+      <div class="banner-label"><span style="display:inline-block;width:8px;height:8px;background:#fff;border-radius:50%;margin-right:6px;animation:pulse-dot 1.5s infinite;"></span> Fahrt wird gesucht</div>
+      <div class="banner-route" id="home-active-search-route">— → —</div>
+      <div class="banner-info">
+        <div class="banner-info-item">
+          <span class="info-label">Verbleibende Zeit</span>
+          <span class="countdown-timer" id="home-search-countdown">90 Min</span>
+        </div>
+      </div>
+      <div class="banner-actions">
+        <button class="btn-cancel" onclick="cancelSearchFromHome()">Suche abbrechen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Active Match (shown when matched) — TOP PRIORITY -->
+  <div id="home-match-section" style="display: none;">
+    <div class="match-active-card">
+      <div class="match-label">Fahrt bestätigt!</div>
+      <div class="match-partner" id="home-match-partner-name">— fährt dich</div>
+      <div class="match-route" id="home-match-route">— → —</div>
+      <div class="match-actions">
+        <button class="btn-chat" onclick="openMatchChat()">💬 Chat</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Available Rides / Quick Actions Section -->
   <div class="planned-rides-section" id="quick-actions-section">
     <!-- For Walkers (Mitfahrer) -->
     <div id="walker-actions" style="display: none;">
@@ -1295,35 +1327,6 @@
       <div class="section-title">Fahrt anbieten</div>
       <button class="home-offer-btn home-action-btn" onclick="openOfferRideModal()">🚗 Fahrt anbieten</button>
       <div id="pending-requests-list" class="available-rides-list"></div>
-    </div>
-  </div>
-
-  <!-- Active Search (Mitfahrer only, shown when searching) -->
-  <div id="home-active-search-section" style="display: none;">
-    <div class="active-ride-banner" style="background: linear-gradient(135deg, var(--teal-500), var(--teal-600)); margin: 16px 20px 12px;">
-      <div class="banner-label">🔍 Fahrt wird gesucht</div>
-      <div class="banner-route" id="home-active-search-route">— → —</div>
-      <div class="banner-info">
-        <div class="banner-info-item">
-          <span class="info-label">Verbleibende Zeit</span>
-          <span class="countdown-timer" id="home-search-countdown">90 Min</span>
-        </div>
-      </div>
-      <div class="banner-actions">
-        <button class="btn-cancel" onclick="cancelSearchDisplay()">Suche abbrechen</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Active Match (shown when matched) -->
-  <div id="home-match-section" style="display: none;">
-    <div class="match-active-card">
-      <div class="match-label">Fahrt bestätigt!</div>
-      <div class="match-partner" id="home-match-partner-name">— in deinem Auto</div>
-      <div class="match-route" id="home-match-route">— → —</div>
-      <div class="match-actions">
-        <button class="btn-chat" onclick="openMatchChat()">💬 Chat</button>
-      </div>
     </div>
   </div>
 
@@ -3089,6 +3092,14 @@ function performGeocoding(query, dropdownId) {
         dropdown.appendChild(item);
       });
       dropdown.classList.add('visible');
+      // Scroll modal so dropdown is visible
+      setTimeout(() => {
+        const modal = dropdown.closest('.modal-content');
+        if (modal) {
+          const inputEl = document.getElementById(dropdownId.replace('-dropdown', ''));
+          if (inputEl) inputEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 50);
     })
     .catch(err => console.log('Geocoding error:', err));
 }
@@ -3756,6 +3767,10 @@ async function submitSearchRide() {
     showActiveSearchOnHome(start, dest, searchRef.id);
 
     closeSearchRideModal();
+
+    // Navigate to home screen to show the active search banner
+    showScreen('home');
+
     loadAvailableRides(); // Reload to show offers
   } catch (e) {
     alert('Fehler beim Speichern: ' + e.message);
@@ -4048,6 +4063,9 @@ function showActiveSearchOnHome(start, dest, searchId) {
   if (section && route) {
     route.textContent = start + ' → ' + dest;
     section.style.display = 'block';
+    // Hide the "Fahrt suchen" button while search is active
+    const walkerBtn = document.querySelector('#walker-actions .home-search-btn');
+    if (walkerBtn) walkerBtn.style.display = 'none';
     updateHomeSearchCountdown();
     window.homeSearchInterval = setInterval(updateHomeSearchCountdown, 1000);
   }
@@ -4089,12 +4107,31 @@ function startSearchExpirationCheck(searchId, expiresAt) {
   }, 10000); // Check every 10 seconds
 }
 
+// Cancel search from home screen (without needing map context)
+function cancelSearchFromHome() {
+  if (!window.activeRiderSearch) { hideActiveSearchOnHome(); return; }
+  if (confirm('Fahrtsuche wirklich abbrechen?')) {
+    if (db && window.activeRiderSearch) {
+      db.collection('rides').doc(window.activeRiderSearch).update({ status: 'cancelled' });
+      stopLiveRideUpdate(window.activeRiderSearch);
+    }
+    window.activeRiderSearch = null;
+    window.activeRiderSearchExpiresAt = null;
+    hideActiveSearchOnHome();
+    deactivateSearchDisplay();
+    loadAvailableRides();
+  }
+}
+
 // Hide active search on home screen
 function hideActiveSearchOnHome() {
   const section = document.getElementById('home-active-search-section');
   if (section) {
     section.style.display = 'none';
   }
+  // Re-show the search button
+  const walkerBtn = document.querySelector('#walker-actions .home-search-btn');
+  if (walkerBtn) walkerBtn.style.display = '';
   if (window.homeSearchInterval) {
     clearInterval(window.homeSearchInterval);
   }
