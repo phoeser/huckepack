@@ -1783,7 +1783,39 @@
 <div class="modal-overlay" id="active-ride-modal">
   <div class="modal-content" style="text-align: center;">
     <div id="active-ride-status" style="font-size: 48px; margin-bottom: 12px;">🚗</div>
-    <div class="modal-header" id="active-ride-title">Fahrt läuft...</div>
+    <div class="modal-header" id="active-ride-title">Fahrt gematcht</div>
+
+    <!-- Phase 1: Waiting for meetup (GPS proximity) -->
+    <div id="ride-phase-meetup" style="display: none;">
+      <div style="padding: 14px; background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 12px; margin-bottom: 16px; text-align: center;">
+        <div style="font-size: 24px; margin-bottom: 6px;">📍</div>
+        <div style="font-weight: 600; color: #92400e; font-size: 14px;">Auf dem Weg zum Treffpunkt</div>
+        <div style="font-size: 12px; color: #a16207; margin-top: 4px;" id="proximity-status">Entfernung wird berechnet...</div>
+        <div style="margin-top: 8px; background: #fbbf2433; border-radius: 8px; height: 6px; overflow: hidden;">
+          <div id="proximity-bar" style="height: 100%; background: #f59e0b; border-radius: 8px; width: 0%; transition: width 0.5s;"></div>
+        </div>
+        <div style="font-size: 11px; color: #a16207; margin-top: 6px;">Fahrt startet automatisch bei Treffpunkt (&lt; 100m)</div>
+      </div>
+    </div>
+
+    <!-- Phase 2: Ride in progress -->
+    <div id="ride-phase-inprogress" style="display: none;">
+      <div style="padding: 14px; background: linear-gradient(135deg, #d1fae5, #a7f3d0); border-radius: 12px; margin-bottom: 16px; text-align: center;">
+        <div style="font-size: 24px; margin-bottom: 6px;">🚀</div>
+        <div style="font-weight: 700; color: #065f46; font-size: 16px;">Fahrt läuft!</div>
+        <div style="display: flex; justify-content: center; gap: 20px; margin-top: 10px;">
+          <div>
+            <div style="font-size: 22px; font-weight: 700; color: #059669; font-family: 'SF Mono', monospace;" id="ride-timer">00:00</div>
+            <div style="font-size: 11px; color: #047857;">Fahrzeit</div>
+          </div>
+          <div>
+            <div style="font-size: 22px; font-weight: 700; color: #059669;" id="ride-live-distance">—</div>
+            <div style="font-size: 11px; color: #047857;">noch übrig</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div id="active-ride-info" style="text-align: left; margin: 16px 0;">
       <div style="padding: 12px; background: var(--green-50); border-radius: 10px; margin-bottom: 12px;">
         <div style="font-size: 13px; color: #666;">Route</div>
@@ -1804,6 +1836,14 @@
         </div>
       </div>
     </div>
+
+    <!-- Navigate to destination button (shown during ride) -->
+    <div id="ride-navigate-btn-wrapper" style="display: none;">
+      <button style="margin-bottom: 10px; padding: 12px; background: linear-gradient(135deg, #3b82f6, #2563eb); border: none; border-radius: 10px; color: white; font-size: 14px; font-weight: 600; cursor: pointer; width: 100%; font-family: inherit;" onclick="openGoogleMapsNavigation()">
+        🗺️ Navigation zum Ziel starten
+      </button>
+    </div>
+
     <!-- Rider sees: pay button after arrival -->
     <div id="active-ride-rider-actions" style="display: none;">
       <button class="ride-pay-btn" onclick="completeRideAndPay()" id="pay-ride-btn">
@@ -1822,7 +1862,7 @@
       💬 Chat mit Partner öffnen
     </button>
     <!-- Both: cancel option -->
-    <button style="margin-top: 8px; padding: 10px; background: none; border: 1px solid #e5e7eb; border-radius: 8px; color: #666; font-size: 13px; cursor: pointer; width: 100%; font-family: inherit;" onclick="cancelActiveRideModal()">
+    <button id="ride-cancel-btn" style="margin-top: 8px; padding: 10px; background: none; border: 1px solid #e5e7eb; border-radius: 8px; color: #666; font-size: 13px; cursor: pointer; width: 100%; font-family: inherit;" onclick="cancelActiveRideModal()">
       Fahrt abbrechen
     </button>
   </div>
@@ -2263,13 +2303,9 @@ function showActiveRide(rideData, isDriver) {
   if (isDriver) {
     document.getElementById('active-ride-price-label').textContent = 'Du erhältst';
     document.getElementById('active-ride-price').textContent = breakdown.driverGets.toFixed(2) + '€';
-    document.getElementById('active-ride-driver-actions').style.display = 'block';
-    document.getElementById('active-ride-rider-actions').style.display = 'none';
   } else {
     document.getElementById('active-ride-price-label').textContent = 'Du zahlst';
     document.getElementById('active-ride-price').textContent = breakdown.riderPays.toFixed(2) + '€';
-    document.getElementById('active-ride-rider-actions').style.display = 'block';
-    document.getElementById('active-ride-driver-actions').style.display = 'none';
     document.getElementById('pay-ride-btn').classList.add('ready');
     // Payment hint je nach Modus
     const hint = document.getElementById('payment-provider-hint');
@@ -2282,8 +2318,212 @@ function showActiveRide(rideData, isDriver) {
     }
   }
 
+  // Hide payment/waiting actions initially (shown after ride starts)
+  document.getElementById('active-ride-driver-actions').style.display = 'none';
+  document.getElementById('active-ride-rider-actions').style.display = 'none';
+
   activeRide.breakdown = breakdown;
+  activeRide.phase = 'meetup'; // meetup → inprogress → arrived
   document.getElementById('active-ride-modal').classList.add('active');
+
+  // Start GPS proximity monitoring
+  startProximityCheck();
+}
+
+// ===== RIDE PHASES: GPS PROXIMITY → IN PROGRESS → ARRIVED =====
+
+window._proximityWatchId = null;
+window._rideStartTime = null;
+window._rideTimerInterval = null;
+window._partnerLastCoords = null;
+
+// Start monitoring GPS distance between driver and rider
+function startProximityCheck() {
+  // Show meetup phase
+  const meetupEl = document.getElementById('ride-phase-meetup');
+  const progressEl = document.getElementById('ride-phase-inprogress');
+  const navBtn = document.getElementById('ride-navigate-btn-wrapper');
+  if (meetupEl) meetupEl.style.display = 'block';
+  if (progressEl) progressEl.style.display = 'none';
+  if (navBtn) navBtn.style.display = 'none';
+
+  document.getElementById('active-ride-status').textContent = '📍';
+  document.getElementById('active-ride-title').textContent = 'Auf dem Weg zum Treffpunkt';
+
+  // Listen for partner's live location via Firestore
+  listenForPartnerLocation();
+
+  // Also track own GPS for proximity
+  if (navigator.geolocation) {
+    window._proximityWatchId = navigator.geolocation.watchPosition(pos => {
+      const myLat = pos.coords.latitude;
+      const myLng = pos.coords.longitude;
+
+      // Update own location in Firestore for partner to see
+      updateMyLocationInRide(myLat, myLng);
+
+      // Check distance to partner
+      if (window._partnerLastCoords) {
+        const dist = haversineDistance(myLat, myLng, window._partnerLastCoords.lat, window._partnerLastCoords.lng);
+        const distMeters = Math.round(dist * 1000);
+
+        // Update UI
+        const statusEl = document.getElementById('proximity-status');
+        const barEl = document.getElementById('proximity-bar');
+        if (statusEl) {
+          if (distMeters < 100) {
+            statusEl.textContent = 'Ihr seid am Treffpunkt! Fahrt startet...';
+          } else {
+            statusEl.textContent = 'Noch ca. ' + distMeters + 'm zum Treffpunkt';
+          }
+        }
+        // Progress bar (max 2km = 0%, 0m = 100%)
+        if (barEl) {
+          const progress = Math.max(0, Math.min(100, (1 - dist / 2) * 100));
+          barEl.style.width = progress + '%';
+        }
+
+        // AUTO-START: If within 100 meters, start the ride!
+        if (distMeters < 100 && activeRide && activeRide.phase === 'meetup') {
+          startRideInProgress();
+        }
+      }
+    }, err => {
+      console.log('GPS proximity watch error:', err);
+      // Fallback: show manual start button
+      const statusEl = document.getElementById('proximity-status');
+      if (statusEl) statusEl.innerHTML = 'GPS nicht verfügbar. <a href="#" onclick="startRideInProgress();return false;" style="color:#92400e;font-weight:600;">Manuell starten</a>';
+    }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 });
+  } else {
+    // No geolocation: show manual start
+    const statusEl = document.getElementById('proximity-status');
+    if (statusEl) statusEl.innerHTML = 'GPS nicht verfügbar. <a href="#" onclick="startRideInProgress();return false;" style="color:#92400e;font-weight:600;">Manuell starten</a>';
+  }
+}
+
+// Update own live location in the ride document
+async function updateMyLocationInRide(lat, lng) {
+  if (!activeRide || !activeRide.rideId || !db || !auth.currentUser) return;
+  try {
+    const field = activeRide.isDriver ? 'driverLiveCoords' : 'riderLiveCoords';
+    await db.collection('rides').doc(activeRide.rideId).update({
+      [field]: new firebase.firestore.GeoPoint(lat, lng),
+      [field + 'At']: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch (e) { /* silent */ }
+}
+
+// Listen for partner's location updates
+function listenForPartnerLocation() {
+  if (!activeRide || !activeRide.rideId || !db) return;
+
+  const unsub = db.collection('rides').doc(activeRide.rideId).onSnapshot(doc => {
+    if (!doc.exists) return;
+    const data = doc.data();
+
+    // Get partner's coords (if I'm driver, I need rider's coords and vice versa)
+    const partnerField = activeRide.isDriver ? 'riderLiveCoords' : 'driverLiveCoords';
+    const coords = data[partnerField];
+    if (coords) {
+      window._partnerLastCoords = {
+        lat: coords.latitude || coords._lat,
+        lng: coords.longitude || coords._long
+      };
+    }
+
+    // If ride was started by partner, also switch to in_progress
+    if (data.ridePhase === 'in_progress' && activeRide.phase === 'meetup') {
+      startRideInProgress(true); // true = triggered by partner
+    }
+  });
+  window._firestoreListeners.push(unsub);
+}
+
+// Transition to "ride in progress"
+async function startRideInProgress(triggeredByPartner) {
+  if (!activeRide || activeRide.phase === 'inprogress') return;
+  activeRide.phase = 'inprogress';
+
+  // Stop proximity watch
+  if (window._proximityWatchId) {
+    navigator.geolocation.clearWatch(window._proximityWatchId);
+    window._proximityWatchId = null;
+  }
+
+  // Update Firestore
+  if (!triggeredByPartner && activeRide.rideId && db) {
+    try {
+      await db.collection('rides').doc(activeRide.rideId).update({
+        ridePhase: 'in_progress',
+        rideStartedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    } catch (e) { console.log('Ride phase update error:', e); }
+  }
+
+  // Update UI
+  document.getElementById('active-ride-status').textContent = '🚀';
+  document.getElementById('active-ride-title').textContent = 'Fahrt läuft!';
+  const meetupEl = document.getElementById('ride-phase-meetup');
+  const progressEl = document.getElementById('ride-phase-inprogress');
+  const navBtn = document.getElementById('ride-navigate-btn-wrapper');
+  if (meetupEl) meetupEl.style.display = 'none';
+  if (progressEl) progressEl.style.display = 'block';
+  if (navBtn) navBtn.style.display = 'block';
+
+  // Start ride timer
+  window._rideStartTime = new Date();
+  window._rideTimerInterval = setInterval(updateRideTimer, 1000);
+
+  // Show payment/waiting actions
+  if (activeRide.isDriver) {
+    document.getElementById('active-ride-driver-actions').style.display = 'block';
+  } else {
+    document.getElementById('active-ride-rider-actions').style.display = 'block';
+  }
+
+  // Notification
+  showDriverNotification('Fahrt gestartet!', 'Gute Fahrt! Navigation zum Ziel verfügbar.');
+}
+
+// Update the ride timer display
+function updateRideTimer() {
+  if (!window._rideStartTime) return;
+  const elapsed = Math.floor((new Date() - window._rideStartTime) / 1000);
+  const mins = Math.floor(elapsed / 60).toString().padStart(2, '0');
+  const secs = (elapsed % 60).toString().padStart(2, '0');
+  const timerEl = document.getElementById('ride-timer');
+  if (timerEl) timerEl.textContent = mins + ':' + secs;
+}
+
+// Open Google Maps navigation to destination
+function openGoogleMapsNavigation() {
+  if (!activeRide) return;
+  // Try to use destination coordinates
+  let destLat, destLng;
+  if (activeRide.destCoords) {
+    destLat = activeRide.destCoords.lat || activeRide.destCoords.latitude || activeRide.destCoords._lat;
+    destLng = activeRide.destCoords.lng || activeRide.destCoords.longitude || activeRide.destCoords._long;
+  }
+  if (destLat && destLng) {
+    window.open('https://www.google.com/maps/dir/?api=1&destination=' + destLat + ',' + destLng + '&travelmode=driving', '_blank');
+  } else {
+    // Fallback: use destination address
+    window.open('https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(activeRide.destination) + '&travelmode=driving', '_blank');
+  }
+}
+
+// Clean up ride phase resources
+function cleanupRidePhase() {
+  if (window._proximityWatchId) {
+    navigator.geolocation.clearWatch(window._proximityWatchId);
+    window._proximityWatchId = null;
+  }
+  if (window._rideTimerInterval) {
+    clearInterval(window._rideTimerInterval);
+    window._rideTimerInterval = null;
+  }
+  window._rideStartTime = null;
+  window._partnerLastCoords = null;
 }
 
 // Complete ride and trigger payment (Stripe Checkout)
@@ -2401,6 +2641,8 @@ async function completeRideAndPay() {
 
 function closePaymentSuccess() {
   document.getElementById('payment-success-modal').classList.remove('active');
+  cleanupRidePhase();
+  window._matchData = null;
   activeRide = null;
   updateUIWithUserData();
   showScreen('home');
@@ -2516,10 +2758,11 @@ function cancelActiveRideModal() {
     if (activeRide && activeRide.rideId && db) {
       db.collection('rides').doc(activeRide.rideId).update({ status: 'cancelled' });
     }
-    // Clean up match and chat data
+    // Clean up match, chat and ride phase data
     window._matchData = null;
     if (window._chatListener) { window._chatListener(); window._chatListener = null; }
     window._activeChatRideId = null;
+    cleanupRidePhase();
     document.getElementById('active-ride-modal').classList.remove('active');
     activeRide = null;
     loadAvailableRides();
@@ -4206,6 +4449,7 @@ async function matchRide(rideId) {
       rideId: rideId,
       start: ride.start,
       destination: ride.destination,
+      destCoords: ride.destCoords ? { lat: ride.destCoords.latitude || ride.destCoords._lat, lng: ride.destCoords.longitude || ride.destCoords._long } : null,
       distanceKm: distKm,
       partnerName: ride.userName,
       driverUserId: isDriverOffer ? ride.userId : auth.currentUser.uid,
