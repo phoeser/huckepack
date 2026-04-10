@@ -543,6 +543,7 @@ function UsersPage() {
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [toast, setToast] = useState(null);
   const [tab, setTab] = useState('alle');
+  const [confirmDeleteUser, setConfirmDeleteUser] = useState(null);
 
   if (loading) return <LoadingSpinner text="Nutzer laden..." />;
 
@@ -555,8 +556,6 @@ function UsersPage() {
     if (tab === 'gesperrt') return matchesSearch && u.blocked === true;
     return matchesSearch;
   });
-
-  const [confirmDeleteUser, setConfirmDeleteUser] = useState(null);
 
   const blockUser = async (uid) => {
     try {
