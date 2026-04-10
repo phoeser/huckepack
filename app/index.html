@@ -2311,18 +2311,23 @@ async function completeRideAndPay() {
 
     // If Stripe is configured, redirect to Stripe Checkout
     if (stripe && stripeConfig.checkoutUrl) {
+      const idToken = await auth.currentUser.getIdToken();
       const response = await fetch(stripeConfig.checkoutUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + idToken
+        },
         body: JSON.stringify({
           paymentId: paymentRef.id,
           rideId: activeRide.rideId,
-          amount: Math.round(breakdown.riderPays * 100), // Cents
-          currency: 'eur',
-          riderEmail: userData.email,
+          riderId: auth.currentUser.uid,
+          amount: breakdown.riderPays,
+          platformFee: breakdown.platformFee,
+          driverAmount: breakdown.driverGets,
+          distanceKm: breakdown.distanceKm,
           description: 'Huckepack Fahrt: ' + breakdown.distanceKm + ' km',
-          driverId: activeRide.driverUserId || '',
-          driverAmount: Math.round(breakdown.driverGets * 100)
+          driverId: activeRide.driverUserId || ''
         })
       });
       const session = await response.json();
@@ -2960,6 +2965,7 @@ async function loadUserFromFirestore() {
 
 async function logoutUser() {
   try {
+    cleanupFirestoreListeners();
     stopAllLiveRideUpdates();
     if (auth) await auth.signOut();
     // Reset user data
@@ -3781,9 +3787,9 @@ function createAvailableRideCard(ride, rideId) {
   card.innerHTML = `
     <div class="available-ride-header">
       <div>
-        <div class="available-ride-route">${ride.start} → ${ride.destination}</div>
-        <div class="available-ride-time">${timeStr} • ${ride.seats || 1} Plätze • ~${distKm.toFixed(1)} km</div>
-        <div class="available-ride-driver">${ride.userName} • ⭐ ${ride.userRating || 0}</div>
+        <div class="available-ride-route">${escapeHtml(ride.start)} → ${escapeHtml(ride.destination)}</div>
+        <div class="available-ride-time">${escapeHtml(timeStr)} • ${ride.seats || 1} Plätze • ~${distKm.toFixed(1)} km</div>
+        <div class="available-ride-driver">${escapeHtml(ride.userName)} • ⭐ ${ride.userRating || 0}</div>
       </div>
       <div style="text-align: right;">
         <div class="available-ride-price">${displayPrice.toFixed(2)}€</div>
@@ -4035,26 +4041,30 @@ async function matchRide(rideId) {
   }
 
   try {
-    const rideDoc = await db.collection('rides').doc(rideId).get();
-    if (!rideDoc.exists) { alert('Fahrt nicht mehr verfügbar'); return; }
-    const ride = rideDoc.data();
+    // Use Firestore Transaction to prevent race conditions (double-matching)
+    const rideRef = db.collection('rides').doc(rideId);
+    const result = await db.runTransaction(async (transaction) => {
+      const rideDoc = await transaction.get(rideRef);
+      if (!rideDoc.exists) throw new Error('Fahrt nicht mehr verfügbar');
+      const ride = rideDoc.data();
 
-    const isRiderRequest = (ride.type === 'request');
-    const isDriverOffer = (ride.type === 'offer');
+      // Check if ride is still active (prevent double-match)
+      if (ride.status !== 'active') throw new Error('Fahrt wurde bereits vergeben');
 
-    // If driver accepts a rider request: update BOTH documents
-    if (isRiderRequest && appMode === 'driver') {
-      // This is a rider's request document — driver accepts it
-      await db.collection('rides').doc(rideId).update({
+      const isRiderRequest = (ride.type === 'request');
+
+      // Update the ride to matched status
+      transaction.update(rideRef, {
         status: 'matched',
         matchedWith: auth.currentUser.uid,
         matchedName: userData.name || 'Unbekannt',
         matchedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
 
-      // Also update the driver's active ride with rider info
-      if (window.activeDriverRide) {
-        await db.collection('rides').doc(window.activeDriverRide).update({
+      // If driver accepts rider request: also update driver's ride
+      if (isRiderRequest && appMode === 'driver' && window.activeDriverRide) {
+        const driverRideRef = db.collection('rides').doc(window.activeDriverRide);
+        transaction.update(driverRideRef, {
           matchedRiderId: rideId,
           matchedWith: ride.userId,
           matchedName: ride.userName,
@@ -4062,19 +4072,16 @@ async function matchRide(rideId) {
         });
       }
 
-      // Show notification
+      return ride;
+    });
+
+    const ride = result;
+    const isRiderRequest = (ride.type === 'request');
+    const isDriverOffer = (ride.type === 'offer');
+
+    if (isRiderRequest && appMode === 'driver') {
       showDriverNotification('Mitfahrer akzeptiert!', ride.userName + ' hat deine Fahrt gebucht');
-
     } else {
-      // Rider accepts driver's offer
-      await db.collection('rides').doc(rideId).update({
-        status: 'matched',
-        matchedWith: auth.currentUser.uid,
-        matchedName: userData.name || 'Unbekannt',
-        matchedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-
-      // Show match on home screen
       showMatchOnHome(ride.userName, ride.start, ride.destination);
     }
 
@@ -4191,11 +4198,23 @@ async function cancelActiveRide(autoExpired = false) {
   }
 }
 
+// Store listener unsubscribe functions for cleanup
+window._firestoreListeners = window._firestoreListeners || [];
+
+function cleanupFirestoreListeners() {
+  if (window._firestoreListeners) {
+    window._firestoreListeners.forEach(unsub => {
+      try { unsub(); } catch (e) { /* ignore */ }
+    });
+    window._firestoreListeners = [];
+  }
+}
+
 // Set up listener for incoming rider requests (driver)
 function setupDriverRequestsListener(driverRideId) {
   if (!db) return;
 
-  db.collection('rides')
+  const unsub = db.collection('rides')
     .where('type', '==', 'request')
     .where('status', '==', 'active')
     .onSnapshot(snapshot => {
@@ -4217,6 +4236,7 @@ function setupDriverRequestsListener(driverRideId) {
     }, error => {
       console.error('Error setting up driver requests listener:', error);
     });
+  window._firestoreListeners.push(unsub);
 }
 
 // Check if rider's route overlaps with driver's route
@@ -4276,10 +4296,10 @@ function displayDriverRequests(requests) {
     card.id = 'request-card-' + request.id;
     card.innerHTML = `
       <div class="request-header">
-        <div class="request-rider">${request.userName}</div>
+        <div class="request-rider">${escapeHtml(request.userName)}</div>
         <div class="request-time">⭐ ${request.userRating || 0}</div>
       </div>
-      <div class="request-route">${request.destination}</div>
+      <div class="request-route">${escapeHtml(request.destination)}</div>
       <div class="request-actions">
         <button class="request-btn btn-accept" onclick="acceptRiderRequest('${request.id}')">✓ Annehmen</button>
         <button class="request-btn btn-decline" onclick="declineRiderRequest('${request.id}')">✕ Ablehnen</button>
@@ -4437,7 +4457,7 @@ function hideActiveSearchOnHome() {
 function setupRiderMatchListener(searchId) {
   if (!db) return;
 
-  db.collection('rides').doc(searchId).onSnapshot(snapshot => {
+  const unsub = db.collection('rides').doc(searchId).onSnapshot(snapshot => {
     if (snapshot.exists) {
       const ride = snapshot.data();
       if (ride.status === 'matched') {
@@ -4448,6 +4468,7 @@ function setupRiderMatchListener(searchId) {
   }, error => {
     console.error('Error setting up match listener:', error);
   });
+  window._firestoreListeners.push(unsub);
 }
 
 // Show match card on home screen
@@ -4479,7 +4500,7 @@ function setupRidesListener() {
 
   const rideType = appMode === 'walker' ? 'offer' : 'request';
 
-  db.collection('rides')
+  const unsub = db.collection('rides')
     .where('type', '==', rideType)
     .where('status', '==', 'active')
     .onSnapshot(snapshot => {
@@ -4487,6 +4508,7 @@ function setupRidesListener() {
     }, error => {
       console.error('Error setting up rides listener:', error);
     });
+  window._firestoreListeners.push(unsub);
 }
 
 // Update the setMode function to include real-time loading
