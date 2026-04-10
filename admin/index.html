@@ -556,18 +556,31 @@ function UsersPage() {
     return matchesSearch;
   });
 
+  const [confirmDeleteUser, setConfirmDeleteUser] = useState(null);
+
   const blockUser = async (uid) => {
     try {
       await db.collection('users').doc(uid).update({ blocked: true });
       setToast('Nutzer gesperrt');
-      setSelectedUserId(null);
     } catch (e) { setToast('Fehler: ' + e.message); }
   };
   const unblockUser = async (uid) => {
     try {
       await db.collection('users').doc(uid).update({ blocked: false });
       setToast('Nutzer entsperrt');
+    } catch (e) { setToast('Fehler: ' + e.message); }
+  };
+  const deleteUser = async (uid) => {
+    try {
+      // Delete user's rides first
+      const userRides = await db.collection('rides').where('userId', '==', uid).get();
+      const batch = db.batch();
+      userRides.docs.forEach(doc => batch.delete(doc.ref));
+      batch.delete(db.collection('users').doc(uid));
+      await batch.commit();
+      setToast('Nutzer und seine Fahrten gelöscht');
       setSelectedUserId(null);
+      setConfirmDeleteUser(null);
     } catch (e) { setToast('Fehler: ' + e.message); }
   };
 
@@ -591,6 +604,7 @@ function UsersPage() {
               <button className="btn btn-secondary btn-sm" onClick={() => unblockUser(u.id)}>Entsperren</button> :
               <button className="btn btn-danger btn-sm" onClick={() => blockUser(u.id)}>{icons.ban} Sperren</button>
             }
+            <button className="btn btn-danger btn-sm" style={{background:'#7f1d1d'}} onClick={() => setConfirmDeleteUser(u.id)}>Löschen</button>
           </div>
         </div>
         <div className="user-stats">
@@ -619,6 +633,17 @@ function UsersPage() {
             </div>
           </div>
         </div>
+        {confirmDeleteUser && (
+          <Modal title="Nutzer endgültig löschen?" onClose={() => setConfirmDeleteUser(null)} footer={
+            <React.Fragment>
+              <button className="btn btn-secondary btn-sm" onClick={() => setConfirmDeleteUser(null)}>Abbrechen</button>
+              <button className="btn btn-danger btn-sm" onClick={() => deleteUser(confirmDeleteUser)}>Endgültig löschen</button>
+            </React.Fragment>
+          }>
+            <p style={{marginBottom:8}}>Möchtest du diesen Nutzer wirklich unwiderruflich löschen?</p>
+            <p style={{fontSize:13,color:'var(--text-muted)'}}>Alle Fahrten des Nutzers werden ebenfalls gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.</p>
+          </Modal>
+        )}
         {toast && <Toast message={toast} onClose={() => setToast(null)} />}
       </div>
     );
@@ -709,6 +734,75 @@ function PaymentsPage() {
         </div>
       </div>
 
+      {/* Monthly Revenue Overview */}
+      {(() => {
+        const monthlyData = {};
+        const monthNames = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
+        payments.filter(p => p.status === 'completed').forEach(p => {
+          if (!p.createdAt) return;
+          const d = p.createdAt.toDate ? p.createdAt.toDate() : new Date(p.createdAt);
+          const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+          const label = `${monthNames[d.getMonth()]} ${d.getFullYear()}`;
+          if (!monthlyData[key]) monthlyData[key] = { label, revenue: 0, fees: 0, payouts: 0, count: 0 };
+          monthlyData[key].revenue += (p.totalAmount || p.amount || 0);
+          monthlyData[key].fees += (p.platformFee || 0);
+          monthlyData[key].payouts += (p.driverAmount || 0);
+          monthlyData[key].count += 1;
+        });
+        const months = Object.entries(monthlyData).sort((a,b) => b[0].localeCompare(a[0]));
+        const maxRevenue = Math.max(...months.map(([,m]) => m.revenue), 1);
+
+        return months.length > 0 ? (
+          <div className="card" style={{marginBottom:24}}>
+            <div className="card-header"><h3>Umsatz pro Monat</h3><p>Monatliche Aufschlüsselung nach Umsatz, Plattformgebühr und Fahrer-Auszahlung</p></div>
+            <div className="card-body">
+              {/* Bar chart */}
+              <div className="chart-bar-container" style={{height:200,marginBottom:24}}>
+                {months.slice(0,12).reverse().map(([key, m]) => (
+                  <div className="chart-bar-group" key={key} style={{flex:1}}>
+                    <div className="chart-bar-value">{m.revenue.toFixed(0)}€</div>
+                    <div style={{display:'flex',flexDirection:'column',width:'100%',alignItems:'center',gap:1,height:`${(m.revenue/maxRevenue)*160}px`}}>
+                      <div style={{width:'70%',flex:m.fees,background:'var(--green-700)',borderRadius:'3px 3px 0 0',minHeight:2}} title={`Plattformgebühr: ${m.fees.toFixed(2)}€`}></div>
+                      <div style={{width:'70%',flex:m.payouts,background:'var(--green-200)',borderRadius:0,minHeight:2}} title={`Fahrer: ${m.payouts.toFixed(2)}€`}></div>
+                    </div>
+                    <div className="chart-bar-label">{m.label}</div>
+                  </div>
+                ))}
+              </div>
+              {/* Legend */}
+              <div style={{display:'flex',gap:24,justifyContent:'center',marginBottom:20}}>
+                <div style={{display:'flex',alignItems:'center',gap:6,fontSize:13}}><div style={{width:12,height:12,borderRadius:3,background:'var(--green-700)'}}></div> Plattformgebühr</div>
+                <div style={{display:'flex',alignItems:'center',gap:6,fontSize:13}}><div style={{width:12,height:12,borderRadius:3,background:'var(--green-200)'}}></div> Fahrer-Auszahlung</div>
+              </div>
+              {/* Table */}
+              <div className="table-container">
+                <table>
+                  <thead><tr><th>Monat</th><th>Fahrten</th><th>Umsatz</th><th>Plattformgebühr</th><th>Fahrer-Auszahlung</th></tr></thead>
+                  <tbody>
+                    {months.map(([key, m]) => (
+                      <tr key={key}>
+                        <td style={{fontWeight:600}}>{m.label}</td>
+                        <td>{m.count}</td>
+                        <td style={{fontWeight:600}}>{m.revenue.toFixed(2)} EUR</td>
+                        <td style={{color:'var(--green-700)',fontWeight:600}}>{m.fees.toFixed(2)} EUR</td>
+                        <td>{m.payouts.toFixed(2)} EUR</td>
+                      </tr>
+                    ))}
+                    <tr style={{background:'var(--bg)',fontWeight:700}}>
+                      <td>Gesamt</td>
+                      <td>{months.reduce((s,[,m])=>s+m.count,0)}</td>
+                      <td>{months.reduce((s,[,m])=>s+m.revenue,0).toFixed(2)} EUR</td>
+                      <td style={{color:'var(--green-700)'}}>{months.reduce((s,[,m])=>s+m.fees,0).toFixed(2)} EUR</td>
+                      <td>{months.reduce((s,[,m])=>s+m.payouts,0).toFixed(2)} EUR</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        ) : null;
+      })()}
+
       <div className="tabs">
         <button className={`tab ${tab === 'alle' ? 'active' : ''}`} onClick={() => setTab('alle')}>Alle ({payments.length})</button>
         <button className={`tab ${tab === 'completed' ? 'active' : ''}`} onClick={() => setTab('completed')}>Abgeschlossen ({payments.filter(p=>p.status==='completed').length})</button>
@@ -754,6 +848,40 @@ function RidesPage() {
   const { data: users } = useFirestoreCollection('users');
   const [tab, setTab] = useState('alle');
   const [search, setSearch] = useState('');
+  const [toast, setToast] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [showCleanup, setShowCleanup] = useState(false);
+  const [cleanupDays, setCleanupDays] = useState(30);
+  const [deleting, setDeleting] = useState(false);
+
+  const deleteRide = async (rideId) => {
+    try {
+      await db.collection('rides').doc(rideId).delete();
+      setToast('Fahrt gelöscht');
+      setConfirmDelete(null);
+    } catch (e) { setToast('Fehler: ' + e.message); }
+  };
+
+  const cleanupOldRides = async () => {
+    setDeleting(true);
+    try {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - cleanupDays);
+      const cutoffTimestamp = firebase.firestore.Timestamp.fromDate(cutoff);
+      const oldRides = rides.filter(r => {
+        if (r.status === 'active' || r.status === 'matched') return false;
+        if (!r.createdAt) return true;
+        const d = r.createdAt.toDate ? r.createdAt.toDate() : new Date(r.createdAt);
+        return d < cutoff;
+      });
+      const batch = db.batch();
+      oldRides.forEach(r => batch.delete(db.collection('rides').doc(r.id)));
+      await batch.commit();
+      setToast(`${oldRides.length} alte Fahrten gelöscht`);
+      setShowCleanup(false);
+    } catch (e) { setToast('Fehler: ' + e.message); }
+    setDeleting(false);
+  };
 
   if (loading) return <LoadingSpinner text="Fahrten laden..." />;
 
@@ -801,11 +929,14 @@ function RidesPage() {
         </div>
       </div>
 
-      <div className="tabs">
-        <button className={`tab ${tab === 'alle' ? 'active' : ''}`} onClick={() => setTab('alle')}>Alle ({rides.length})</button>
-        <button className={`tab ${tab === 'active' ? 'active' : ''}`} onClick={() => setTab('active')}>Aktiv ({activeCount})</button>
-        <button className={`tab ${tab === 'matched' ? 'active' : ''}`} onClick={() => setTab('matched')}>Gematcht ({matchedCount})</button>
-        <button className={`tab ${tab === 'expired' ? 'active' : ''}`} onClick={() => setTab('expired')}>Beendet</button>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+        <div className="tabs" style={{marginBottom:0}}>
+          <button className={`tab ${tab === 'alle' ? 'active' : ''}`} onClick={() => setTab('alle')}>Alle ({rides.length})</button>
+          <button className={`tab ${tab === 'active' ? 'active' : ''}`} onClick={() => setTab('active')}>Aktiv ({activeCount})</button>
+          <button className={`tab ${tab === 'matched' ? 'active' : ''}`} onClick={() => setTab('matched')}>Gematcht ({matchedCount})</button>
+          <button className={`tab ${tab === 'expired' ? 'active' : ''}`} onClick={() => setTab('expired')}>Beendet</button>
+        </div>
+        <button className="btn btn-danger btn-sm" onClick={() => setShowCleanup(true)}>Alte Fahrten aufräumen</button>
       </div>
       <div className="search-bar">{icons.search}<input placeholder="Adresse suchen..." value={search} onChange={e => setSearch(e.target.value)} /></div>
 
@@ -813,10 +944,10 @@ function RidesPage() {
         <div className="card-body" style={{padding:0}}>
           <div className="table-container">
             <table>
-              <thead><tr><th>Typ</th><th>Nutzer</th><th>Start</th><th>Ziel</th><th>Distanz</th><th>Preis</th><th>Status</th><th>Erstellt</th></tr></thead>
+              <thead><tr><th>Typ</th><th>Nutzer</th><th>Start</th><th>Ziel</th><th>Distanz</th><th>Preis</th><th>Status</th><th>Erstellt</th><th>Aktion</th></tr></thead>
               <tbody>
                 {filtered.length === 0 ? (
-                  <tr><td colSpan="8" style={{textAlign:'center',color:'var(--text-muted)',padding:24}}>Keine Fahrten gefunden</td></tr>
+                  <tr><td colSpan="9" style={{textAlign:'center',color:'var(--text-muted)',padding:24}}>Keine Fahrten gefunden</td></tr>
                 ) : filtered.slice(0, 50).map(r => {
                   const user = usersMap[r.userId];
                   return (
@@ -829,6 +960,7 @@ function RidesPage() {
                       <td>{r.price ? `${r.price.toFixed(2)} EUR` : '-'}</td>
                       <td><span className={`badge ${r.status === 'active' ? 'badge-green' : r.status === 'matched' ? 'badge-blue' : r.status === 'cancelled' ? 'badge-red' : r.status === 'expired' ? 'badge-amber' : 'badge-purple'}`}>{r.status || '-'}</span></td>
                       <td style={{color:'var(--text-muted)',fontSize:13}}>{timeAgo(r.createdAt)}</td>
+                      <td><button className="btn btn-danger btn-sm" style={{padding:'4px 10px',fontSize:12}} onClick={(e) => { e.stopPropagation(); setConfirmDelete(r.id); }}>Löschen</button></td>
                     </tr>
                   );
                 })}
@@ -837,6 +969,45 @@ function RidesPage() {
           </div>
         </div>
       </div>
+
+      {confirmDelete && (
+        <Modal title="Fahrt löschen?" onClose={() => setConfirmDelete(null)} footer={
+          <React.Fragment>
+            <button className="btn btn-secondary btn-sm" onClick={() => setConfirmDelete(null)}>Abbrechen</button>
+            <button className="btn btn-danger btn-sm" onClick={() => deleteRide(confirmDelete)}>Endgültig löschen</button>
+          </React.Fragment>
+        }>
+          <p>Möchtest du diese Fahrt wirklich unwiderruflich löschen?</p>
+        </Modal>
+      )}
+
+      {showCleanup && (
+        <Modal title="Alte Fahrten aufräumen" onClose={() => setShowCleanup(false)} footer={
+          <React.Fragment>
+            <button className="btn btn-secondary btn-sm" onClick={() => setShowCleanup(false)}>Abbrechen</button>
+            <button className="btn btn-danger btn-sm" onClick={cleanupOldRides} disabled={deleting}>
+              {deleting ? 'Lösche...' : `Alte Fahrten löschen`}
+            </button>
+          </React.Fragment>
+        }>
+          <p style={{marginBottom:16}}>Lösche alle abgelaufenen und abgebrochenen Fahrten, die älter sind als:</p>
+          <div className="form-group">
+            <label className="form-label">Älter als (Tage)</label>
+            <input className="form-input" type="number" min="1" max="365" value={cleanupDays} onChange={e => setCleanupDays(parseInt(e.target.value) || 30)} />
+          </div>
+          <p style={{fontSize:13,color:'var(--text-muted)'}}>
+            Betrifft {rides.filter(r => {
+              if (r.status === 'active' || r.status === 'matched') return false;
+              if (!r.createdAt) return true;
+              const d = r.createdAt.toDate ? r.createdAt.toDate() : new Date(r.createdAt);
+              const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - cleanupDays);
+              return d < cutoff;
+            }).length} Fahrten. Aktive und gematchte Fahrten werden nicht gelöscht.
+          </p>
+        </Modal>
+      )}
+
+      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
     </div>
   );
 }
