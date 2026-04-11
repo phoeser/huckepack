@@ -66,6 +66,15 @@
       "purpose": "maskable"
     }
   ],
+  "share_target": {
+    "action": "/huckepack/app/?share=true",
+    "method": "GET",
+    "params": {
+      "title": "share_title",
+      "text": "share_text",
+      "url": "share_url"
+    }
+  },
   "screenshots": [],
   "shortcuts": [
     {
