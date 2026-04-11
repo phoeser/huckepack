@@ -1173,6 +1173,28 @@
   </label>
 </div>
 
+<!-- ===== EMAIL VERIFICATION GATE ===== -->
+<div class="screen" id="verify-email-screen" style="background: linear-gradient(135deg, #fefce8, #fef9c3); display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 32px 24px; text-align: center;">
+  <div style="font-size: 64px; margin-bottom: 20px;">📧</div>
+  <div style="font-size: 22px; font-weight: 700; color: #854d0e; margin-bottom: 12px;">E-Mail bestätigen</div>
+  <div style="font-size: 14px; color: #a16207; line-height: 1.6; max-width: 320px; margin-bottom: 24px;">
+    Wir haben dir eine Bestätigungs-Mail an <strong id="verify-email-address">deine E-Mail</strong> gesendet. Bitte klicke den Link in der Mail, um dein Konto zu aktivieren.
+  </div>
+  <div style="background: #fff; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; max-width: 320px; width: 100%; border: 1px solid #fde68a;">
+    <div style="font-size: 13px; color: #92400e; margin-bottom: 8px;">Keine Mail erhalten?</div>
+    <div style="font-size: 12px; color: #a16207; line-height: 1.5;">Prüfe deinen Spam-Ordner oder klicke unten, um eine neue Mail zu senden.</div>
+  </div>
+  <button onclick="resendAndNotify()" style="padding: 14px 32px; background: linear-gradient(135deg, #f59e0b, #d97706); border: none; border-radius: 12px; color: white; font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; margin-bottom: 12px; width: 100%; max-width: 320px;">
+    Bestätigungs-Mail erneut senden
+  </button>
+  <button onclick="checkEmailVerified()" style="padding: 14px 32px; background: linear-gradient(135deg, #22c55e, #16a34a); border: none; border-radius: 12px; color: white; font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; margin-bottom: 12px; width: 100%; max-width: 320px;">
+    Ich habe bestätigt — Weiter
+  </button>
+  <button onclick="verifyLogout()" style="padding: 10px; background: none; border: none; color: #a16207; font-size: 13px; cursor: pointer; font-family: inherit; text-decoration: underline;">
+    Mit anderem Konto anmelden
+  </button>
+</div>
+
 <!-- ===== ONBOARDING ===== -->
 <div class="screen" id="onboarding">
   <div class="onboarding-container">
@@ -2131,6 +2153,14 @@ if (auth) {
       window.authState.user = user;
       window.authState.method = user.providerData[0]?.providerId === 'google.com' ? 'google' : 'email';
 
+      // E-Mail-Verifizierungs-Check: Blockiere Zugang bei unbestätigter E-Mail
+      if (!user.emailVerified && user.providerData[0]?.providerId === 'password') {
+        const emailEl = document.getElementById('verify-email-address');
+        if (emailEl) emailEl.textContent = user.email;
+        showScreen('verify-email-screen');
+        return; // Nicht weitermachen bis E-Mail bestätigt
+      }
+
       // Daten aus Firestore laden
       const found = await loadUserFromFirestore();
       if (found) {
@@ -2138,11 +2168,6 @@ if (auth) {
         showScreen('home');
       } else {
         showScreen('home');
-      }
-
-      // Verifizierungs-Check
-      if (!user.emailVerified && user.providerData[0]?.providerId === 'password') {
-        setTimeout(() => showVerificationBanner(), 1000);
       }
 
       resetSessionTimeout();
@@ -2631,6 +2656,14 @@ async function completeRideAndPay() {
     document.getElementById('active-ride-modal').classList.remove('active');
     document.getElementById('payment-success-modal').classList.add('active');
 
+    // Store rating context for after payment success
+    window._pendingRatingContext = {
+      rideId: activeRide.rideId,
+      partnerId: activeRide.driverUserId || '',
+      partnerName: activeRide.partnerName || 'Fahrpartner',
+      isDriver: false // Rider is paying, so they rate the driver
+    };
+
   } catch (e) {
     alert('Fehler bei Zahlung: ' + e.message);
     console.error(e);
@@ -2642,11 +2675,22 @@ async function completeRideAndPay() {
 function closePaymentSuccess() {
   document.getElementById('payment-success-modal').classList.remove('active');
   cleanupRidePhase();
-  window._matchData = null;
-  activeRide = null;
-  updateUIWithUserData();
-  showScreen('home');
-  loadAvailableRides();
+
+  // Open rating screen if we have context
+  const ratingCtx = window._pendingRatingContext;
+  if (ratingCtx && ratingCtx.partnerId) {
+    window._pendingRatingContext = null;
+    window._matchData = null;
+    const savedRide = activeRide;
+    activeRide = null;
+    openRatingScreen(ratingCtx.rideId, ratingCtx.partnerId, ratingCtx.partnerName, ratingCtx.isDriver);
+  } else {
+    window._matchData = null;
+    activeRide = null;
+    updateUIWithUserData();
+    showScreen('home');
+    loadAvailableRides();
+  }
 }
 
 // ===== ZAHLUNGSEINSTELLUNGEN =====
@@ -3127,6 +3171,25 @@ async function proceedFromLogin(method) {
 
 function afterLoginSuccess() {
   showScreen('splash');
+
+  // Check email verification for email/password users
+  const user = auth.currentUser;
+  if (user && !user.emailVerified && user.providerData[0]?.providerId === 'password') {
+    // Show verification gate
+    setTimeout(() => {
+      const emailEl = document.getElementById('verify-email-address');
+      if (emailEl) emailEl.textContent = user.email;
+      showScreen('verify-email-screen');
+    }, 1000);
+    return;
+  }
+
+  // Email verified or Google login — proceed normally
+  proceedAfterVerification();
+}
+
+function proceedAfterVerification() {
+  showScreen('splash');
   // Try to load existing user data from Firestore
   loadUserFromFirestore().then(found => {
     setTimeout(() => {
@@ -3145,6 +3208,45 @@ function afterLoginSuccess() {
       }
     }, 1500);
   });
+}
+
+// Check if email has been verified (user clicks "Ich habe bestätigt")
+async function checkEmailVerified() {
+  if (!auth || !auth.currentUser) return;
+  try {
+    await auth.currentUser.reload();
+    if (auth.currentUser.emailVerified) {
+      hideVerificationBanner();
+      proceedAfterVerification();
+    } else {
+      alert('Deine E-Mail ist noch nicht bestätigt. Bitte klicke den Link in der Bestätigungs-Mail.');
+    }
+  } catch (e) {
+    console.error('Email verification check error:', e);
+    alert('Fehler beim Prüfen: ' + e.message);
+  }
+}
+
+// Resend verification email with feedback
+async function resendAndNotify() {
+  try {
+    if (auth && auth.currentUser) {
+      await auth.currentUser.sendEmailVerification();
+      alert('Neue Bestätigungs-Mail gesendet! Prüfe deinen Posteingang (auch Spam-Ordner).');
+    }
+  } catch (e) {
+    if (e.code === 'auth/too-many-requests') {
+      alert('Zu viele Anfragen. Bitte warte einige Minuten und versuche es dann erneut.');
+    } else {
+      alert('Fehler: ' + e.message);
+    }
+  }
+}
+
+// Logout from verification screen
+function verifyLogout() {
+  if (auth) auth.signOut();
+  showScreen('login');
 }
 
 // ===== FIRESTORE: SAVE & LOAD USER DATA =====
@@ -3195,7 +3297,8 @@ async function loadUserFromFirestore() {
       userData.mode = data.mode || 'walker';
       userData.trips = data.trips || 0;
       userData.co2Saved = data.co2Saved || 0;
-      userData.rating = data.rating || 0;
+      userData.rating = data.avgRating || data.rating || 0;
+      userData.ratingCount = data.ratingCount || 0;
       if (data.car) {
         userData.car.brand = data.car.brand || '';
         userData.car.model = data.car.model || '';
@@ -3335,7 +3438,13 @@ function updateUIWithUserData() {
   if (el('profile-trips')) el('profile-trips').textContent = userData.trips || 0;
   if (el('profile-rating')) el('profile-rating').textContent = userData.rating || 0;
   if (el('stat-trips')) el('stat-trips').textContent = userData.trips || 0;
-  if (el('stat-rating')) el('stat-rating').textContent = (userData.rating || 0) + ' ⭐';
+  if (el('stat-rating')) {
+    const rating = userData.rating || 0;
+    const count = userData.ratingCount || 0;
+    el('stat-rating').textContent = rating > 0 ? rating.toFixed(1) + ' ⭐' : 'Neu';
+    // Tooltip with count
+    el('stat-rating').title = count > 0 ? count + ' Bewertung' + (count > 1 ? 'en' : '') : 'Noch keine Bewertungen';
+  }
   if (el('stat-co2')) el('stat-co2').textContent = (userData.co2Saved || 0).toFixed(1) + ' kg';
   updateDashboard();
 
@@ -3889,6 +3998,8 @@ function addChatMsgLocal(text, type) {
 }
 
 // ===== RATING =====
+window._ratingContext = null; // { rideId, partnerId, partnerName, isDriver }
+
 function setRating(stars) {
   currentRating = stars;
   document.querySelectorAll('#star-rating .star').forEach((star, i) => {
@@ -3911,20 +4022,98 @@ function updateCharCounter() {
   document.getElementById('char-count').textContent = textarea.value.length;
 }
 
-function submitRating() {
-  const comment = document.getElementById('rating-comment').value;
-  console.log('Rating submitted:', { stars: currentRating, tags: selectedTags, comment });
+// Open rating screen with context from the completed ride
+function openRatingScreen(rideId, partnerId, partnerName, isDriver) {
+  window._ratingContext = { rideId, partnerId, partnerName, isDriver };
+  // Reset rating UI
   currentRating = 0;
   selectedTags = [];
   document.getElementById('rating-comment').value = '';
   document.getElementById('char-count').textContent = '0';
   document.querySelectorAll('#star-rating .star').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('active'));
-  userData.trips++;
-  userData.co2Saved += 1.2;
-  bookRiderCost();
-  updateUIWithUserData();
-  showScreen('home');
+  // Set partner name
+  const nameEl = document.getElementById('rating-driver-name');
+  if (nameEl) nameEl.textContent = 'Mit ' + (partnerName || 'deinem Fahrpartner');
+  showScreen('rating-screen');
+}
+
+async function submitRating() {
+  if (currentRating === 0) {
+    alert('Bitte gib mindestens 1 Stern.');
+    return;
+  }
+
+  const comment = document.getElementById('rating-comment').value.trim();
+  const ctx = window._ratingContext;
+
+  if (!ctx || !ctx.partnerId || !db || !auth.currentUser) {
+    // Fallback: no context, just go home
+    showScreen('home');
+    return;
+  }
+
+  try {
+    // 1. Save rating to Firestore ratings collection
+    await db.collection('ratings').add({
+      rideId: ctx.rideId || '',
+      fromUserId: auth.currentUser.uid,
+      fromUserName: userData.name || 'Unbekannt',
+      toUserId: ctx.partnerId,
+      toUserName: ctx.partnerName || 'Unbekannt',
+      stars: currentRating,
+      tags: selectedTags,
+      comment: comment,
+      raterRole: ctx.isDriver ? 'driver' : 'rider',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    // 2. Update partner's average rating in users collection
+    await updateUserAverageRating(ctx.partnerId);
+
+    // 3. Reset UI
+    currentRating = 0;
+    selectedTags = [];
+    window._ratingContext = null;
+
+    // Show thank you and go home
+    showDriverNotification('Danke!', 'Deine Bewertung wurde gespeichert.');
+    updateUIWithUserData();
+    showScreen('home');
+    loadAvailableRides();
+
+  } catch (e) {
+    console.error('Rating submit error:', e);
+    alert('Fehler beim Speichern der Bewertung: ' + e.message);
+  }
+}
+
+// Calculate and update average rating for a user
+async function updateUserAverageRating(userId) {
+  if (!db || !userId) return;
+  try {
+    const snapshot = await db.collection('ratings')
+      .where('toUserId', '==', userId)
+      .get();
+
+    if (snapshot.empty) return;
+
+    let totalStars = 0;
+    let count = 0;
+    snapshot.forEach(doc => {
+      totalStars += doc.data().stars || 0;
+      count++;
+    });
+
+    const avgRating = Math.round((totalStars / count) * 10) / 10;
+
+    await db.collection('users').doc(userId).update({
+      avgRating: avgRating,
+      ratingCount: count
+    });
+  } catch (e) {
+    console.error('Update avg rating error:', e);
+  }
 }
 
 function updateDashboard() {
@@ -4655,7 +4844,7 @@ function displayDriverRequests(requests) {
     card.innerHTML = `
       <div class="request-header">
         <div class="request-rider">${escapeHtml(request.userName)}</div>
-        <div class="request-time">⭐ ${request.userRating || 0}</div>
+        <div class="request-time">⭐ ${request.userRating ? request.userRating.toFixed(1) : 'Neu'}</div>
       </div>
       <div class="request-route">${escapeHtml(request.destination)}</div>
       <div class="request-actions">
