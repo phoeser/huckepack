@@ -1617,6 +1617,14 @@
         </div>
         <span class="profile-section-item-arrow">›</span>
       </div>
+      <div class="profile-section-item" onclick="openEmergencyContactSettings()" style="cursor:pointer;">
+        <span class="profile-section-item-icon">🆘</span>
+        <div class="profile-section-item-text">
+          <div class="profile-section-item-label">Notfallkontakt</div>
+          <div class="profile-section-item-value" id="emergency-contact-label">Nicht hinterlegt</div>
+        </div>
+        <span class="profile-section-item-arrow">›</span>
+      </div>
     </div>
     <div class="profile-section">
       <div class="profile-section-item" onclick="openAboutScreen()" style="cursor:pointer;">
@@ -1891,9 +1899,62 @@
     <button style="margin-top: 12px; padding: 12px; background: linear-gradient(135deg, #06b6d4, #0891b2); border: none; border-radius: 10px; color: white; font-size: 14px; font-weight: 600; cursor: pointer; width: 100%; font-family: inherit;" onclick="openMatchChat()">
       💬 Chat mit Partner öffnen
     </button>
+    <!-- Both: SOS emergency button -->
+    <button style="margin-top: 12px; padding: 12px; background: linear-gradient(135deg, #ef4444, #dc2626); border: none; border-radius: 10px; color: white; font-size: 14px; font-weight: 700; cursor: pointer; width: 100%; font-family: inherit; letter-spacing: 0.5px;" onclick="openEmergencyScreen()">
+      🆘 Notfall
+    </button>
     <!-- Both: cancel option -->
     <button id="ride-cancel-btn" style="margin-top: 8px; padding: 10px; background: none; border: 1px solid #e5e7eb; border-radius: 8px; color: #666; font-size: 13px; cursor: pointer; width: 100%; font-family: inherit;" onclick="cancelActiveRideModal()">
       Fahrt abbrechen
+    </button>
+  </div>
+</div>
+
+<!-- Emergency Screen -->
+<div class="modal-overlay" id="emergency-modal" style="z-index: 10001;">
+  <div class="modal-content" style="text-align: center; background: #fff;">
+    <div style="font-size: 56px; margin-bottom: 8px;">🆘</div>
+    <div style="font-size: 22px; font-weight: 800; color: #dc2626; margin-bottom: 6px;">Notfall</div>
+    <div style="font-size: 13px; color: #64748b; margin-bottom: 20px; line-height: 1.5;">Wähle eine Option. Dein aktueller Standort wird automatisch geteilt.</div>
+
+    <!-- Call 112 -->
+    <a href="tel:112" style="display: block; margin-bottom: 10px; padding: 16px; background: linear-gradient(135deg, #ef4444, #dc2626); border: none; border-radius: 12px; color: white; font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit; text-decoration: none; text-align: center;">
+      📞 Notruf 112 anrufen
+    </a>
+
+    <!-- Call 110 -->
+    <a href="tel:110" style="display: block; margin-bottom: 10px; padding: 14px; background: linear-gradient(135deg, #f97316, #ea580c); border: none; border-radius: 12px; color: white; font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; text-decoration: none; text-align: center;">
+      👮 Polizei 110 anrufen
+    </a>
+
+    <!-- Share location with emergency contact -->
+    <button style="margin-bottom: 10px; padding: 14px; background: linear-gradient(135deg, #8b5cf6, #7c3aed); border: none; border-radius: 12px; color: white; font-size: 15px; font-weight: 600; cursor: pointer; width: 100%; font-family: inherit;" onclick="sendEmergencyToContact()">
+      📨 Standort an Notfallkontakt senden
+    </button>
+
+    <!-- Share location via chat -->
+    <button style="margin-bottom: 10px; padding: 14px; background: linear-gradient(135deg, #06b6d4, #0891b2); border: none; border-radius: 12px; color: white; font-size: 15px; font-weight: 600; cursor: pointer; width: 100%; font-family: inherit;" onclick="sendEmergencyLocationToChat()">
+      💬 Standort im Chat teilen
+    </button>
+
+    <!-- Emergency contact info -->
+    <div id="emergency-contact-info" style="display: none; margin-bottom: 12px; padding: 12px; background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0; text-align: left;">
+      <div style="font-size: 12px; color: #94a3b8; margin-bottom: 4px;">Notfallkontakt</div>
+      <div style="font-size: 14px; font-weight: 600; color: #334155;" id="emergency-contact-name">—</div>
+      <div style="font-size: 13px; color: #64748b;" id="emergency-contact-phone">—</div>
+    </div>
+
+    <!-- Current location display -->
+    <div style="padding: 12px; background: #fef2f2; border-radius: 10px; margin-bottom: 16px; border: 1px solid #fecaca;">
+      <div style="font-size: 12px; color: #dc2626; font-weight: 600; margin-bottom: 4px;">Dein aktueller Standort</div>
+      <div style="font-size: 13px; color: #991b1b; font-family: 'SF Mono', monospace;" id="emergency-location">Wird ermittelt...</div>
+    </div>
+
+    <!-- Log emergency to Firestore -->
+    <div style="font-size: 11px; color: #94a3b8; margin-bottom: 16px;">Notfälle werden zum Schutz aller Nutzer dokumentiert.</div>
+
+    <button style="padding: 12px; background: #f1f5f9; border: none; border-radius: 10px; color: #475569; font-size: 14px; font-weight: 600; cursor: pointer; width: 100%; font-family: inherit;" onclick="closeEmergencyScreen()">
+      Zurück zur Fahrt
     </button>
   </div>
 </div>
@@ -3564,6 +3625,8 @@ async function loadUserFromFirestore() {
       userData.co2Saved = data.co2Saved || 0;
       userData.rating = data.avgRating || data.rating || 0;
       userData.ratingCount = data.ratingCount || 0;
+      userData.emergencyName = data.emergencyName || '';
+      userData.emergencyPhone = data.emergencyPhone || '';
       if (data.car) {
         userData.car.brand = data.car.brand || '';
         userData.car.model = data.car.model || '';
@@ -3711,6 +3774,10 @@ function updateUIWithUserData() {
     el('stat-rating').title = count > 0 ? count + ' Bewertung' + (count > 1 ? 'en' : '') : 'Noch keine Bewertungen';
   }
   if (el('stat-co2')) el('stat-co2').textContent = (userData.co2Saved || 0).toFixed(1) + ' kg';
+  // Emergency contact label
+  if (el('emergency-contact-label')) {
+    el('emergency-contact-label').textContent = userData.emergencyName ? userData.emergencyName + ' (' + userData.emergencyPhone + ')' : 'Nicht hinterlegt';
+  }
   updateDashboard();
 
   if (userData.car) {
@@ -5723,6 +5790,147 @@ async function resendVerificationEmail() {
     }
   } catch (e) {
     console.error('Verifizierungs-Mail erneut senden fehlgeschlagen:', e);
+  }
+}
+
+// ===== NOTFALL / EMERGENCY =====
+
+// Open the emergency screen
+function openEmergencyScreen() {
+  document.getElementById('emergency-modal').classList.add('active');
+
+  // Show emergency contact if set
+  const contactInfo = document.getElementById('emergency-contact-info');
+  const contactName = document.getElementById('emergency-contact-name');
+  const contactPhone = document.getElementById('emergency-contact-phone');
+  if (userData.emergencyName && userData.emergencyPhone) {
+    contactInfo.style.display = 'block';
+    contactName.textContent = userData.emergencyName;
+    contactPhone.textContent = userData.emergencyPhone;
+  } else {
+    contactInfo.style.display = 'none';
+  }
+
+  // Get and display current location
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      const lat = pos.coords.latitude.toFixed(5);
+      const lng = pos.coords.longitude.toFixed(5);
+      const locEl = document.getElementById('emergency-location');
+      if (locEl) locEl.textContent = lat + ', ' + lng;
+    }, () => {
+      const locEl = document.getElementById('emergency-location');
+      if (locEl) locEl.textContent = 'Standort nicht verfügbar';
+    }, { enableHighAccuracy: true, timeout: 5000 });
+  }
+
+  // Log emergency event to Firestore
+  logEmergencyEvent('opened');
+}
+
+function closeEmergencyScreen() {
+  document.getElementById('emergency-modal').classList.remove('active');
+}
+
+// Log emergency event for safety
+async function logEmergencyEvent(action) {
+  if (!db || !auth || !auth.currentUser) return;
+  try {
+    await db.collection('emergencies').add({
+      userId: auth.currentUser.uid,
+      userName: userData.name || 'Unbekannt',
+      rideId: activeRide ? activeRide.rideId : '',
+      partnerName: activeRide ? activeRide.partnerName : '',
+      action: action,
+      location: userPos ? new firebase.firestore.GeoPoint(userPos.lat, userPos.lng) : null,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch (e) {
+    console.log('Emergency log error:', e);
+  }
+}
+
+// Send location to emergency contact via SMS link
+function sendEmergencyToContact() {
+  if (!userData.emergencyPhone) {
+    alert('Kein Notfallkontakt hinterlegt. Bitte geh in dein Profil und hinterlege einen Notfallkontakt.');
+    return;
+  }
+
+  logEmergencyEvent('contact_alerted');
+
+  const lat = userPos ? userPos.lat.toFixed(5) : '?';
+  const lng = userPos ? userPos.lng.toFixed(5) : '?';
+  const mapsLink = 'https://www.google.com/maps?q=' + lat + ',' + lng;
+  const partnerInfo = activeRide ? ' Fahrpartner: ' + (activeRide.partnerName || 'Unbekannt') + '.' : '';
+  const message = 'NOTFALL! Ich brauche Hilfe. Mein Standort: ' + mapsLink + partnerInfo + ' - Gesendet über Huckepack';
+
+  // Open SMS app with pre-filled message
+  const phone = userData.emergencyPhone.replace(/\s/g, '');
+  window.open('sms:' + phone + '?body=' + encodeURIComponent(message), '_self');
+}
+
+// Share emergency location in ride chat
+async function sendEmergencyLocationToChat() {
+  if (!window._activeChatRideId && activeRide && activeRide.rideId) {
+    window._activeChatRideId = activeRide.rideId;
+  }
+
+  if (!window._activeChatRideId || !db || !auth.currentUser) {
+    alert('Kein aktiver Chat vorhanden.');
+    return;
+  }
+
+  logEmergencyEvent('location_shared_chat');
+
+  const lat = userPos ? userPos.lat : 0;
+  const lng = userPos ? userPos.lng : 0;
+
+  try {
+    await db.collection('chats').doc(window._activeChatRideId).collection('messages').add({
+      senderId: auth.currentUser.uid,
+      senderName: userData.name || 'Unbekannt',
+      text: '🆘 NOTFALL — Standort: ' + lat.toFixed(4) + ', ' + lng.toFixed(4),
+      type: 'location',
+      coords: new firebase.firestore.GeoPoint(lat, lng),
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    alert('Notfall-Standort wurde im Chat geteilt.');
+  } catch (e) {
+    alert('Fehler: ' + e.message);
+  }
+}
+
+// Emergency contact settings
+function openEmergencyContactSettings() {
+  const name = prompt('Name des Notfallkontakts:', userData.emergencyName || '');
+  if (name === null) return; // cancelled
+
+  const phone = prompt('Telefonnummer des Notfallkontakts:', userData.emergencyPhone || '');
+  if (phone === null) return; // cancelled
+
+  userData.emergencyName = name.trim();
+  userData.emergencyPhone = phone.trim();
+
+  // Update label in profile
+  const label = document.getElementById('emergency-contact-label');
+  if (label) {
+    label.textContent = name.trim() ? name.trim() + ' (' + phone.trim() + ')' : 'Nicht hinterlegt';
+  }
+
+  // Save to Firestore
+  saveEmergencyContact();
+}
+
+async function saveEmergencyContact() {
+  if (!db || !auth || !auth.currentUser) return;
+  try {
+    await db.collection('users').doc(auth.currentUser.uid).update({
+      emergencyName: userData.emergencyName || '',
+      emergencyPhone: userData.emergencyPhone || ''
+    });
+  } catch (e) {
+    console.log('Emergency contact save error:', e);
   }
 }
 
