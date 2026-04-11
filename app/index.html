@@ -1803,7 +1803,15 @@
 
 <!-- Active Ride Screen -->
 <div class="modal-overlay" id="active-ride-modal">
-  <div class="modal-content" style="text-align: center;">
+  <div class="modal-content" style="text-align: center; max-height: 95vh; overflow-y: auto;">
+    <!-- Live Tracking Map -->
+    <div id="live-track-map-container" style="display: none; margin: -20px -20px 16px -20px; border-radius: 16px 16px 0 0; overflow: hidden; position: relative;">
+      <div id="live-track-map" style="height: 220px; width: 100%;"></div>
+      <div id="live-track-eta" style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.75); color: #fff; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; backdrop-filter: blur(8px); z-index: 500;">
+        <span id="eta-text">Berechne Route...</span>
+      </div>
+    </div>
+
     <div id="active-ride-status" style="font-size: 48px; margin-bottom: 12px;">🚗</div>
     <div class="modal-header" id="active-ride-title">Fahrt gematcht</div>
 
@@ -2375,6 +2383,9 @@ function startProximityCheck() {
   document.getElementById('active-ride-status').textContent = '📍';
   document.getElementById('active-ride-title').textContent = 'Auf dem Weg zum Treffpunkt';
 
+  // Show live tracking map already during meetup
+  setTimeout(() => initLiveTrackMap(), 300);
+
   // Listen for partner's live location via Firestore
   listenForPartnerLocation();
 
@@ -2506,8 +2517,11 @@ async function startRideInProgress(triggeredByPartner) {
     document.getElementById('active-ride-rider-actions').style.display = 'block';
   }
 
+  // Initialize live tracking map
+  setTimeout(() => initLiveTrackMap(), 300);
+
   // Notification
-  showDriverNotification('Fahrt gestartet!', 'Gute Fahrt! Navigation zum Ziel verfügbar.');
+  showDriverNotification('Fahrt gestartet!', 'Gute Fahrt! Live-Tracking aktiv.');
 }
 
 // Update the ride timer display
@@ -2547,8 +2561,259 @@ function cleanupRidePhase() {
     clearInterval(window._rideTimerInterval);
     window._rideTimerInterval = null;
   }
+  if (window._liveTrackWatchId) {
+    navigator.geolocation.clearWatch(window._liveTrackWatchId);
+    window._liveTrackWatchId = null;
+  }
+  if (window._liveTrackListener) {
+    window._liveTrackListener();
+    window._liveTrackListener = null;
+  }
   window._rideStartTime = null;
   window._partnerLastCoords = null;
+  window._liveTrackMap = null;
+  window._liveDriverMarker = null;
+  window._liveRiderMarker = null;
+  window._liveDestMarker = null;
+  window._liveRouteLine = null;
+}
+
+// ===== LIVE TRACKING (UBER-STYLE) =====
+
+window._liveTrackMap = null;
+window._liveDriverMarker = null;
+window._liveRiderMarker = null;
+window._liveDestMarker = null;
+window._liveRouteLine = null;
+window._liveTrackWatchId = null;
+window._liveTrackListener = null;
+
+// Initialize the live tracking map
+function initLiveTrackMap() {
+  const container = document.getElementById('live-track-map-container');
+  const mapDiv = document.getElementById('live-track-map');
+  if (!container || !mapDiv) return;
+
+  container.style.display = 'block';
+
+  // Create map if not already created
+  if (window._liveTrackMap) {
+    window._liveTrackMap.remove();
+    window._liveTrackMap = null;
+  }
+
+  const startLat = userPos ? userPos.lat : 48.1351;
+  const startLng = userPos ? userPos.lng : 11.5820;
+
+  window._liveTrackMap = L.map('live-track-map', {
+    zoomControl: false,
+    attributionControl: false,
+    dragging: true,
+    touchZoom: true,
+    scrollWheelZoom: false
+  }).setView([startLat, startLng], 14);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: ''
+  }).addTo(window._liveTrackMap);
+
+  // Car icon for driver
+  const driverIcon = L.divIcon({
+    html: '<div style="font-size: 28px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">🚗</div>',
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    className: ''
+  });
+
+  // Person icon for rider
+  const riderIcon = L.divIcon({
+    html: '<div style="font-size: 24px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">🧑</div>',
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+    className: ''
+  });
+
+  // Destination flag
+  const destIcon = L.divIcon({
+    html: '<div style="font-size: 24px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">📍</div>',
+    iconSize: [28, 28],
+    iconAnchor: [14, 28],
+    className: ''
+  });
+
+  // Add markers
+  window._liveDriverMarker = L.marker([startLat, startLng], { icon: driverIcon }).addTo(window._liveTrackMap);
+  window._liveRiderMarker = L.marker([startLat, startLng], { icon: riderIcon }).addTo(window._liveTrackMap);
+
+  // Add destination marker if we have coords
+  if (activeRide && activeRide.destCoords) {
+    window._liveDestMarker = L.marker(
+      [activeRide.destCoords.lat, activeRide.destCoords.lng],
+      { icon: destIcon }
+    ).addTo(window._liveTrackMap);
+  }
+
+  // Route line (will be updated)
+  window._liveRouteLine = L.polyline([], {
+    color: '#22c55e',
+    weight: 4,
+    opacity: 0.8,
+    dashArray: '10, 6'
+  }).addTo(window._liveTrackMap);
+
+  // Start GPS tracking for own position
+  startLiveGPSTracking();
+
+  // Start listening for partner position
+  startLivePartnerListener();
+}
+
+// Track own GPS and update map + Firestore
+function startLiveGPSTracking() {
+  if (!navigator.geolocation) return;
+
+  window._liveTrackWatchId = navigator.geolocation.watchPosition(pos => {
+    const lat = pos.coords.latitude;
+    const lng = pos.coords.longitude;
+
+    // Update own marker
+    const myMarker = activeRide && activeRide.isDriver ? window._liveDriverMarker : window._liveRiderMarker;
+    if (myMarker) myMarker.setLatLng([lat, lng]);
+
+    // Update Firestore
+    updateMyLocationInRide(lat, lng);
+
+    // Fit map bounds to show all markers
+    fitLiveTrackBounds();
+
+    // Update ETA
+    updateLiveETA(lat, lng);
+
+  }, err => {
+    console.log('Live tracking GPS error:', err);
+  }, { enableHighAccuracy: true, maximumAge: 3000, timeout: 10000 });
+}
+
+// Listen for partner's position updates from Firestore
+function startLivePartnerListener() {
+  if (!activeRide || !activeRide.rideId || !db) return;
+
+  const unsub = db.collection('rides').doc(activeRide.rideId).onSnapshot(doc => {
+    if (!doc.exists) return;
+    const data = doc.data();
+
+    // Get partner's field
+    const partnerField = activeRide.isDriver ? 'riderLiveCoords' : 'driverLiveCoords';
+    const coords = data[partnerField];
+    if (!coords) return;
+
+    const lat = coords.latitude || coords._lat;
+    const lng = coords.longitude || coords._long;
+    if (!lat || !lng) return;
+
+    // Update partner marker
+    const partnerMarker = activeRide.isDriver ? window._liveRiderMarker : window._liveDriverMarker;
+    if (partnerMarker) {
+      partnerMarker.setLatLng([lat, lng]);
+    }
+
+    // Store partner coords
+    window._partnerLastCoords = { lat, lng };
+
+    // Fit bounds
+    fitLiveTrackBounds();
+
+    // Update route line
+    updateLiveRoute(lat, lng);
+  });
+
+  window._liveTrackListener = unsub;
+  window._firestoreListeners.push(unsub);
+}
+
+// Fit map to show all relevant markers
+function fitLiveTrackBounds() {
+  if (!window._liveTrackMap) return;
+
+  const bounds = L.latLngBounds([]);
+
+  if (window._liveDriverMarker) bounds.extend(window._liveDriverMarker.getLatLng());
+  if (window._liveRiderMarker) bounds.extend(window._liveRiderMarker.getLatLng());
+  if (window._liveDestMarker) bounds.extend(window._liveDestMarker.getLatLng());
+
+  if (bounds.isValid()) {
+    window._liveTrackMap.fitBounds(bounds, { padding: [30, 30], maxZoom: 16 });
+  }
+}
+
+// Update route line between driver and destination
+function updateLiveRoute(partnerLat, partnerLng) {
+  if (!window._liveRouteLine || !activeRide) return;
+
+  const points = [];
+
+  // If I'm the rider, show route from driver to destination
+  if (!activeRide.isDriver && window._liveDriverMarker) {
+    const driverPos = window._liveDriverMarker.getLatLng();
+    points.push([driverPos.lat, driverPos.lng]);
+  }
+
+  // If I'm the driver, show route from me to destination
+  if (activeRide.isDriver && userPos) {
+    points.push([userPos.lat, userPos.lng]);
+  }
+
+  // Add destination
+  if (activeRide.destCoords) {
+    points.push([activeRide.destCoords.lat, activeRide.destCoords.lng]);
+  }
+
+  if (points.length >= 2) {
+    // Use OSRM for real route
+    fetchOSRMRoute(points[0], points[points.length - 1]);
+  }
+}
+
+// Fetch real route from OSRM and draw on map
+async function fetchOSRMRoute(start, end) {
+  if (!window._liveTrackMap || !window._liveRouteLine) return;
+  try {
+    const url = `https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${end[1]},${end[0]}?overview=full&geometries=geojson`;
+    const resp = await fetch(url);
+    const data = await resp.json();
+
+    if (data.routes && data.routes[0]) {
+      const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+      window._liveRouteLine.setLatLngs(coords);
+
+      // Update ETA from OSRM
+      const durationMin = Math.round(data.routes[0].duration / 60);
+      const distKm = (data.routes[0].distance / 1000).toFixed(1);
+      const etaEl = document.getElementById('eta-text');
+      if (etaEl) {
+        etaEl.textContent = '🚗 ' + durationMin + ' Min · ' + distKm + ' km zum Ziel';
+      }
+
+      // Update ride-live-distance in the timer area
+      const liveDistEl = document.getElementById('ride-live-distance');
+      if (liveDistEl) liveDistEl.textContent = distKm + ' km';
+    }
+  } catch (e) {
+    console.log('OSRM route error:', e);
+  }
+}
+
+// Update ETA based on current position and destination
+function updateLiveETA(myLat, myLng) {
+  if (!activeRide || !activeRide.destCoords) return;
+
+  const dist = haversineDistance(myLat, myLng, activeRide.destCoords.lat, activeRide.destCoords.lng);
+  // Rough ETA: assume 30 km/h in city
+  const etaMin = Math.round((dist * 1.3) / 30 * 60);
+  const etaEl = document.getElementById('eta-text');
+  if (etaEl && !window._osrmEtaActive) {
+    etaEl.textContent = '~' + etaMin + ' Min · ' + (dist * 1.3).toFixed(1) + ' km zum Ziel';
+  }
 }
 
 // Complete ride and trigger payment (Stripe Checkout)
