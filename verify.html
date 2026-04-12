@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Huckepack — E-Mail bestätigen</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #065f46 0%, #064e3b 50%, #022c22 100%);
+  padding: 20px;
+}
+.card {
+  background: #fff;
+  border-radius: 24px;
+  max-width: 420px;
+  width: 100%;
+  padding: 40px 32px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.logo {
+  font-size: 56px;
+  margin-bottom: 8px;
+}
+.brand {
+  font-size: 28px;
+  font-weight: 800;
+  color: #166534;
+  letter-spacing: -0.5px;
+  margin-bottom: 24px;
+}
+.divider {
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #22c55e, transparent);
+  border-radius: 2px;
+  margin-bottom: 28px;
+}
+.title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 12px;
+}
+.description {
+  font-size: 14px;
+  color: #64748b;
+  line-height: 1.6;
+  margin-bottom: 28px;
+}
+.status-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+.btn {
+  display: inline-block;
+  padding: 16px 40px;
+  border: none;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  text-decoration: none;
+  transition: all 0.2s;
+  width: 100%;
+}
+.btn-primary {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: white;
+  box-shadow: 0 4px 15px rgba(34,197,94,0.3);
+}
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(34,197,94,0.4);
+}
+.btn-secondary {
+  background: #f1f5f9;
+  color: #475569;
+  margin-top: 12px;
+}
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e2e8f0;
+  border-top: 4px solid #22c55e;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 20px;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.features {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+  text-align: left;
+}
+.feature {
+  flex: 1;
+  background: #f0fdf4;
+  border-radius: 12px;
+  padding: 14px;
+}
+.feature-icon {
+  font-size: 20px;
+  margin-bottom: 6px;
+}
+.feature-text {
+  font-size: 11px;
+  color: #166534;
+  line-height: 1.4;
+  font-weight: 500;
+}
+.footer {
+  margin-top: 28px;
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.5;
+}
+.error-text {
+  color: #dc2626;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+.success-text {
+  color: #16a34a;
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+</style>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+</head>
+<body>
+
+<div class="card" id="card">
+  <!-- Loading state -->
+  <div id="state-loading">
+    <div class="logo">🍃</div>
+    <div class="brand">Huckepack</div>
+    <div class="divider"></div>
+    <div class="spinner"></div>
+    <div class="title">E-Mail wird bestätigt...</div>
+    <div class="description">Einen Moment bitte, wir verifizieren deine E-Mail-Adresse.</div>
+  </div>
+
+  <!-- Success state -->
+  <div id="state-success" style="display:none;">
+    <div class="logo">🍃</div>
+    <div class="brand">Huckepack</div>
+    <div class="divider"></div>
+    <div class="status-icon">✅</div>
+    <div class="title">E-Mail bestätigt!</div>
+    <div class="success-text">Dein Konto ist jetzt vollständig aktiviert.</div>
+    <div class="description">Du kannst jetzt Huckepack nutzen — finde Fahrten oder biete welche an und spare CO₂ bei jeder Fahrt!</div>
+    <a href="https://phoeser.github.io/huckepack/" class="btn btn-primary">
+      🚗 Jetzt Huckepack öffnen
+    </a>
+    <div class="features">
+      <div class="feature">
+        <div class="feature-icon">🌿</div>
+        <div class="feature-text">CO₂ sparen bei jeder Fahrt</div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">💰</div>
+        <div class="feature-text">Nur 0,20€ pro Kilometer</div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">⚡</div>
+        <div class="feature-text">Spontan & in Echtzeit</div>
+      </div>
+    </div>
+    <div class="footer">
+      Willkommen bei Huckepack — jede Fahrt zählt für unseren Planeten. 🌍
+    </div>
+  </div>
+
+  <!-- Error state -->
+  <div id="state-error" style="display:none;">
+    <div class="logo">🍃</div>
+    <div class="brand">Huckepack</div>
+    <div class="divider"></div>
+    <div class="status-icon">⚠️</div>
+    <div class="title">Bestätigung fehlgeschlagen</div>
+    <div class="error-text" id="error-message">Der Link ist ungültig oder abgelaufen.</div>
+    <div class="description">Bitte öffne die Huckepack-App und fordere eine neue Bestätigungs-Mail an.</div>
+    <a href="https://phoeser.github.io/huckepack/" class="btn btn-primary">
+      Zurück zu Huckepack
+    </a>
+    <div class="footer">
+      Falls das Problem weiterhin besteht, kontaktiere uns unter support@huckepack.de
+    </div>
+  </div>
+</div>
+
+<script>
+// Initialize Firebase
+const firebaseConfig = {
+  apiKey: "AIzaSyCeSI8G1kKX-hQ0q9Hes5ZnOthbk22QiPU",
+  authDomain: "huckepack-1f320.firebaseapp.com",
+  projectId: "huckepack-1f320",
+  storageBucket: "huckepack-1f320.firebasestorage.app",
+  messagingSenderId: "970366874517",
+  appId: "1:970366874517:web:fd1e3fb03280dbbd8c3eb6"
+};
+firebase.initializeApp(firebaseConfig);
+
+function showState(state) {
+  document.getElementById('state-loading').style.display = state === 'loading' ? 'block' : 'none';
+  document.getElementById('state-success').style.display = state === 'success' ? 'block' : 'none';
+  document.getElementById('state-error').style.display = state === 'error' ? 'block' : 'none';
+}
+
+// Parse URL parameters
+const params = new URLSearchParams(window.location.search);
+const mode = params.get('mode');
+const oobCode = params.get('oobCode');
+
+if (mode === 'verifyEmail' && oobCode) {
+  // Apply the verification code
+  firebase.auth().applyActionCode(oobCode)
+    .then(() => {
+      showState('success');
+    })
+    .catch(error => {
+      console.error('Verification error:', error);
+      const errMsg = document.getElementById('error-message');
+      if (error.code === 'auth/expired-action-code') {
+        errMsg.textContent = 'Der Bestätigungslink ist abgelaufen. Bitte fordere eine neue Mail an.';
+      } else if (error.code === 'auth/invalid-action-code') {
+        errMsg.textContent = 'Der Bestätigungslink ist ungültig oder wurde bereits verwendet.';
+      } else {
+        errMsg.textContent = 'Fehler: ' + error.message;
+      }
+      showState('error');
+    });
+} else if (mode === 'resetPassword' && oobCode) {
+  // Redirect to main app for password reset
+  window.location.href = 'https://phoeser.github.io/huckepack/?mode=resetPassword&oobCode=' + oobCode;
+} else {
+  // No valid parameters
+  document.getElementById('error-message').textContent = 'Kein gültiger Bestätigungslink gefunden.';
+  showState('error');
+}
+</script>
+</body>
+</html>
