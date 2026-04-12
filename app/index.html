@@ -6266,35 +6266,66 @@ async function saveEmergencyContact() {
 }
 
 // ===== PASSWORT VERGESSEN =====
+let _forgotCooldown = false;
 async function forgotPassword() {
   const email = document.getElementById('login-email').value.trim();
   const msgEl = document.getElementById('forgot-success-msg');
-  if (!email) {
-    msgEl.textContent = 'Bitte gib zuerst deine E-Mail-Adresse ein.';
-    msgEl.style.background = 'rgba(220,38,38,0.2)';
-    msgEl.style.color = '#fca5a5';
+  const btn = document.querySelector('.login-forgot');
+
+  function showMsg(text, isError) {
+    msgEl.textContent = text;
+    msgEl.style.background = isError ? 'rgba(220,38,38,0.2)' : 'rgba(34,197,94,0.2)';
+    msgEl.style.color = isError ? '#fca5a5' : '#bbf7d0';
     msgEl.classList.add('visible');
-    setTimeout(() => msgEl.classList.remove('visible'), 4000);
+    setTimeout(() => msgEl.classList.remove('visible'), 5000);
+  }
+
+  if (!email) {
+    showMsg('Bitte gib zuerst deine E-Mail-Adresse ein.', true);
     return;
   }
+
+  // 30-Sekunden-Cooldown
+  if (_forgotCooldown) {
+    showMsg('Bitte warte 30 Sekunden, bevor du es erneut versuchst.', true);
+    return;
+  }
+
+  // Loading-State
+  const origText = btn ? btn.textContent : '';
+  if (btn) { btn.textContent = 'Wird gesendet...'; btn.disabled = true; }
+
   try {
-    if (auth) {
-      await auth.sendPasswordResetEmail(email);
-    }
-    msgEl.textContent = 'Link zum Zurücksetzen wurde an ' + email + ' gesendet!';
-    msgEl.style.background = 'rgba(34,197,94,0.2)';
-    msgEl.style.color = '#bbf7d0';
-    msgEl.classList.add('visible');
-    setTimeout(() => msgEl.classList.remove('visible'), 6000);
+    if (!auth) throw { code: 'no-auth', message: 'Firebase nicht verfügbar' };
+
+    // Timeout nach 10 Sekunden
+    const result = await Promise.race([
+      auth.sendPasswordResetEmail(email),
+      new Promise((_, reject) => setTimeout(() => reject({ code: 'timeout', message: 'Zeitüberschreitung' }), 10000))
+    ]);
+
+    showMsg('Link zum Zurücksetzen wurde an ' + email + ' gesendet! Prüfe auch den Spam-Ordner.', false);
+
+    // 30-Sekunden-Cooldown starten
+    _forgotCooldown = true;
+    let seconds = 30;
+    const interval = setInterval(() => {
+      seconds--;
+      if (btn) btn.textContent = 'Warten (' + seconds + 's)';
+      if (seconds <= 0) {
+        clearInterval(interval);
+        _forgotCooldown = false;
+        if (btn) { btn.textContent = origText; btn.disabled = false; }
+      }
+    }, 1000);
   } catch (e) {
     let errMsg = 'Fehler beim Senden. Versuche es später erneut.';
     if (e.code === 'auth/user-not-found') errMsg = 'Kein Konto mit dieser E-Mail gefunden.';
-    if (e.code === 'auth/invalid-email') errMsg = 'Ungültige E-Mail-Adresse.';
-    msgEl.textContent = errMsg;
-    msgEl.style.background = 'rgba(220,38,38,0.2)';
-    msgEl.style.color = '#fca5a5';
-    msgEl.classList.add('visible');
-    setTimeout(() => msgEl.classList.remove('visible'), 5000);
+    else if (e.code === 'auth/invalid-email') errMsg = 'Ungültige E-Mail-Adresse.';
+    else if (e.code === 'auth/too-many-requests') errMsg = 'Zu viele Anfragen. Bitte warte einige Minuten.';
+    else if (e.code === 'timeout') errMsg = 'Zeitüberschreitung — bitte prüfe deine Internetverbindung.';
+    showMsg(errMsg, true);
+    if (btn) { btn.textContent = origText; btn.disabled = false; }
   }
 }
 
