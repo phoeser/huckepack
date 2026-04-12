@@ -1662,6 +1662,17 @@
         </div>
       </a>
     </div>
+    <!-- Empfehlen -->
+    <div class="profile-section" style="margin-top: 8px;">
+      <div class="profile-section-item" onclick="shareHuckepack()" style="cursor:pointer;background:linear-gradient(135deg,#f0fdf4,#dcfce7);">
+        <span class="profile-section-item-icon">💚</span>
+        <span class="profile-section-item-text">
+          <div class="profile-section-item-label" style="color:#166534;font-weight:700;">Huckepack weiterempfehlen</div>
+          <div class="profile-section-item-value" style="color:#16a34a;">Per WhatsApp, E-Mail oder Link teilen</div>
+        </span>
+        <span class="profile-section-item-arrow" style="color:#16a34a;">›</span>
+      </div>
+    </div>
     <div class="profile-section" style="margin-top: 8px;">
       <div class="profile-section-item" onclick="logoutUser()" style="cursor: pointer;">
         <span class="profile-section-item-icon">🚪</span>
@@ -5768,6 +5779,141 @@ function openAboutScreen() { document.getElementById('about-screen-modal').class
 function closeAboutScreen() { document.getElementById('about-screen-modal').classList.remove('active'); }
 function openPrivacyScreen() { document.getElementById('privacy-screen-modal').classList.add('active'); }
 function closePrivacyScreen() { document.getElementById('privacy-screen-modal').classList.remove('active'); }
+
+// ===== HUCKEPACK WEITEREMPFEHLEN =====
+async function shareHuckepack() {
+  const shareUrl = 'https://phoeser.github.io/huckepack/app/';
+  const userName = (window.userData && window.userData.name) ? window.userData.name : 'Jemand';
+  const shareTitle = 'Huckepack - Mitfahren in München';
+  const shareText = userName + ' empfiehlt dir Huckepack! Spontan mitfahren in München für nur 20 Cent/km. Günstiger als Uber, schneller als der Bus. Probier es aus:';
+
+  // Try native Web Share API first (works on mobile)
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: shareTitle,
+        text: shareText,
+        url: shareUrl
+      });
+      // Track share event
+      if (db && auth.currentUser) {
+        db.collection('events').add({
+          type: 'share',
+          method: 'native',
+          userId: auth.currentUser.uid,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        }).catch(() => {});
+      }
+      return;
+    } catch (e) {
+      // User cancelled or API not supported - show fallback
+      if (e.name === 'AbortError') return;
+    }
+  }
+
+  // Fallback: Show share modal with WhatsApp, E-Mail, Link kopieren
+  showShareModal(shareTitle, shareText, shareUrl);
+}
+
+function showShareModal(title, text, url) {
+  // Remove existing modal if any
+  const existing = document.getElementById('share-modal');
+  if (existing) existing.remove();
+
+  const fullMessage = text + ' ' + url;
+  const whatsappUrl = 'https://wa.me/?text=' + encodeURIComponent(fullMessage);
+  const emailSubject = encodeURIComponent(title);
+  const emailBody = encodeURIComponent(text + '\n\n' + url);
+  const emailUrl = 'mailto:?subject=' + emailSubject + '&body=' + emailBody;
+  const smsUrl = 'sms:?body=' + encodeURIComponent(fullMessage);
+
+  const modal = document.createElement('div');
+  modal.id = 'share-modal';
+  modal.innerHTML = `
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:flex-end;justify-content:center;padding:16px;" onclick="if(event.target===this)this.remove()">
+      <div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:420px;padding:24px;padding-bottom:max(24px,env(safe-area-inset-bottom));">
+        <div style="text-align:center;margin-bottom:20px;">
+          <div style="width:40px;height:4px;background:#e2e8f0;border-radius:2px;margin:0 auto 16px;"></div>
+          <div style="font-size:18px;font-weight:700;color:#1e293b;">Huckepack teilen</div>
+          <div style="font-size:13px;color:#94a3b8;margin-top:4px;">Empfiehl Huckepack deinen Freunden</div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <a href="${whatsappUrl}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:#dcfce7;border-radius:14px;text-decoration:none;color:#166534;font-weight:600;font-size:15px;">
+            <span style="font-size:28px;">💬</span>
+            <div>
+              <div>WhatsApp</div>
+              <div style="font-size:11px;font-weight:400;color:#16a34a;">Direkt an Kontakte senden</div>
+            </div>
+          </a>
+
+          <a href="${emailUrl}" style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:#eff6ff;border-radius:14px;text-decoration:none;color:#1e40af;font-weight:600;font-size:15px;">
+            <span style="font-size:28px;">📧</span>
+            <div>
+              <div>E-Mail</div>
+              <div style="font-size:11px;font-weight:400;color:#3b82f6;">Per E-Mail weiterleiten</div>
+            </div>
+          </a>
+
+          <a href="${smsUrl}" style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:#fef3c7;border-radius:14px;text-decoration:none;color:#92400e;font-weight:600;font-size:15px;">
+            <span style="font-size:28px;">💬</span>
+            <div>
+              <div>SMS</div>
+              <div style="font-size:11px;font-weight:400;color:#d97706;">Per SMS teilen</div>
+            </div>
+          </a>
+
+          <button onclick="copyShareLink('${url}')" style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:#f1f5f9;border-radius:14px;border:none;color:#475569;font-weight:600;font-size:15px;cursor:pointer;width:100%;font-family:inherit;">
+            <span style="font-size:28px;">🔗</span>
+            <div style="text-align:left;">
+              <div>Link kopieren</div>
+              <div style="font-size:11px;font-weight:400;color:#94a3b8;">In die Zwischenablage kopieren</div>
+            </div>
+          </button>
+        </div>
+
+        <button onclick="document.getElementById('share-modal').remove()" style="width:100%;padding:14px;margin-top:16px;background:#f1f5f9;border:none;border-radius:14px;font-size:15px;font-weight:600;color:#64748b;cursor:pointer;font-family:inherit;">
+          Abbrechen
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  // Track share modal open
+  if (db && auth.currentUser) {
+    db.collection('events').add({
+      type: 'share',
+      method: 'modal_opened',
+      userId: auth.currentUser.uid,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).catch(() => {});
+  }
+}
+
+async function copyShareLink(url) {
+  try {
+    await navigator.clipboard.writeText(url);
+    // Show success feedback
+    const btn = event.target.closest('button');
+    const origHTML = btn.querySelector('div > div:first-child').textContent;
+    btn.querySelector('div > div:first-child').textContent = 'Kopiert!';
+    btn.style.background = '#dcfce7';
+    setTimeout(() => {
+      btn.querySelector('div > div:first-child').textContent = origHTML;
+      btn.style.background = '#f1f5f9';
+    }, 2000);
+  } catch (e) {
+    // Fallback for older browsers
+    const input = document.createElement('input');
+    input.value = url;
+    document.body.appendChild(input);
+    input.select();
+    document.execCommand('copy');
+    document.body.removeChild(input);
+    alert('Link kopiert!');
+  }
+}
 
 // ===== LIVE RIDE UPDATE (alle 60s, Auto-Löschen bei <600m) =====
 let liveRideIntervals = {}; // rideId -> intervalId
