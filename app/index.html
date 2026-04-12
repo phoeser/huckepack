@@ -2253,12 +2253,22 @@ if (auth) {
       window.authState.user = user;
       window.authState.method = user.providerData[0]?.providerId === 'google.com' ? 'google' : 'email';
 
-      // E-Mail-Verifizierungs-Check: Blockiere Zugang bei unbestätigter E-Mail
-      if (!user.emailVerified && user.providerData[0]?.providerId === 'password') {
-        const emailEl = document.getElementById('verify-email-address');
-        if (emailEl) emailEl.textContent = user.email;
-        showScreen('verify-email-screen');
-        return; // Nicht weitermachen bis E-Mail bestätigt
+      // E-Mail-Verifizierungs-Check: Lade aktuellen Status vom Server
+      if (user.providerData[0]?.providerId === 'password') {
+        try {
+          await user.reload();
+          // Nach reload den aktuellen User nochmal holen
+          const refreshedUser = auth.currentUser;
+          if (refreshedUser && !refreshedUser.emailVerified) {
+            const emailEl = document.getElementById('verify-email-address');
+            if (emailEl) emailEl.textContent = refreshedUser.email;
+            showScreen('verify-email-screen');
+            return; // Nicht weitermachen bis E-Mail bestätigt
+          }
+        } catch (e) {
+          console.warn('Email-Verify-Reload fehlgeschlagen, überspringe Check:', e);
+          // Bei Fehler (z.B. offline) nicht blockieren
+        }
       }
 
       // Daten aus Firestore laden
@@ -3497,10 +3507,6 @@ async function proceedFromLogin(method) {
         window.authState.isLoggedIn = true;
         window.authState.method = 'email';
         afterLoginSuccess();
-        // Verifizierungs-Check nach Login
-        if (!result.user.emailVerified) {
-          setTimeout(() => showVerificationBanner(), 1500);
-        }
       } catch (e) {
         if (e.code === 'auth/user-not-found') showLoginError('Kein Konto mit dieser E-Mail gefunden.');
         else if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') showLoginError('Falsches Passwort.');
@@ -3547,19 +3553,28 @@ async function proceedFromLogin(method) {
   }
 }
 
-function afterLoginSuccess() {
+async function afterLoginSuccess() {
   showScreen('splash');
 
   // Check email verification for email/password users
   const user = auth.currentUser;
-  if (user && !user.emailVerified && user.providerData[0]?.providerId === 'password') {
-    // Show verification gate
-    setTimeout(() => {
-      const emailEl = document.getElementById('verify-email-address');
-      if (emailEl) emailEl.textContent = user.email;
-      showScreen('verify-email-screen');
-    }, 1000);
-    return;
+  if (user && user.providerData[0]?.providerId === 'password') {
+    try {
+      await user.reload();
+      const refreshedUser = auth.currentUser;
+      if (refreshedUser && !refreshedUser.emailVerified) {
+        // Show verification gate
+        setTimeout(() => {
+          const emailEl = document.getElementById('verify-email-address');
+          if (emailEl) emailEl.textContent = refreshedUser.email;
+          showScreen('verify-email-screen');
+        }, 1000);
+        return;
+      }
+    } catch (e) {
+      console.warn('Email-Verify-Reload fehlgeschlagen:', e);
+      // Bei Fehler nicht blockieren — lieber durchlassen
+    }
   }
 
   // Email verified or Google login — proceed normally
