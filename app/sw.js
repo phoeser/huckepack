@@ -1,5 +1,5 @@
 // Huckepack Service Worker v1.0
-const CACHE_NAME = 'huckepack-v1';
+const CACHE_NAME = 'huckepack-v2';
 const OFFLINE_URL = '/huckepack/app/';
 
 // Files to cache for offline use
