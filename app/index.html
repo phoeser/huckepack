@@ -1174,7 +1174,7 @@
 </div>
 
 <!-- ===== EMAIL VERIFICATION GATE ===== -->
-<div class="screen" id="verify-email-screen" style="background: linear-gradient(135deg, #fefce8, #fef9c3); display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 32px 24px; text-align: center;">
+<div class="screen" id="verify-email-screen" style="background: linear-gradient(135deg, #fefce8, #fef9c3); flex-direction: column; justify-content: center; align-items: center; padding: 32px 24px; text-align: center;">
   <div style="font-size: 64px; margin-bottom: 20px;">📧</div>
   <div style="font-size: 22px; font-weight: 700; color: #854d0e; margin-bottom: 12px;">E-Mail bestätigen</div>
   <div style="font-size: 14px; color: #a16207; line-height: 1.6; max-width: 320px; margin-bottom: 24px;">
@@ -2253,22 +2253,9 @@ if (auth) {
       window.authState.user = user;
       window.authState.method = user.providerData[0]?.providerId === 'google.com' ? 'google' : 'email';
 
-      // E-Mail-Verifizierungs-Check: Lade aktuellen Status vom Server
-      if (user.providerData[0]?.providerId === 'password') {
-        try {
-          await user.reload();
-          // Nach reload den aktuellen User nochmal holen
-          const refreshedUser = auth.currentUser;
-          if (refreshedUser && !refreshedUser.emailVerified) {
-            const emailEl = document.getElementById('verify-email-address');
-            if (emailEl) emailEl.textContent = refreshedUser.email;
-            showScreen('verify-email-screen');
-            return; // Nicht weitermachen bis E-Mail bestätigt
-          }
-        } catch (e) {
-          console.warn('Email-Verify-Reload fehlgeschlagen, überspringe Check:', e);
-          // Bei Fehler (z.B. offline) nicht blockieren
-        }
+      // E-Mail-Verifizierung: Nur Banner-Hinweis, kein Blocker
+      if (user.providerData[0]?.providerId === 'password' && !user.emailVerified) {
+        window._showEmailBanner = true;
       }
 
       // Daten aus Firestore laden
@@ -2276,12 +2263,19 @@ if (auth) {
       if (found) {
         updateUIWithUserData();
         showScreen('home');
+        // Zeige Email-Verifizierungs-Banner (non-blocking)
+        if (window._showEmailBanner) {
+          setTimeout(() => showVerificationBanner(), 500);
+        }
         // Process shared destination from Google Maps if any
         if (window._sharedDestination) {
           setTimeout(() => processSharedDestination(), 800);
         }
       } else {
         showScreen('home');
+        if (window._showEmailBanner) {
+          setTimeout(() => showVerificationBanner(), 500);
+        }
       }
 
       resetSessionTimeout();
@@ -3553,31 +3547,14 @@ async function proceedFromLogin(method) {
   }
 }
 
-async function afterLoginSuccess() {
-  showScreen('splash');
-
-  // Check email verification for email/password users
+function afterLoginSuccess() {
+  // E-Mail-Verifizierung: Nur Banner-Hinweis, kein Blocker
   const user = auth.currentUser;
-  if (user && user.providerData[0]?.providerId === 'password') {
-    try {
-      await user.reload();
-      const refreshedUser = auth.currentUser;
-      if (refreshedUser && !refreshedUser.emailVerified) {
-        // Show verification gate
-        setTimeout(() => {
-          const emailEl = document.getElementById('verify-email-address');
-          if (emailEl) emailEl.textContent = refreshedUser.email;
-          showScreen('verify-email-screen');
-        }, 1000);
-        return;
-      }
-    } catch (e) {
-      console.warn('Email-Verify-Reload fehlgeschlagen:', e);
-      // Bei Fehler nicht blockieren — lieber durchlassen
-    }
+  if (user && user.providerData[0]?.providerId === 'password' && !user.emailVerified) {
+    window._showEmailBanner = true;
   }
 
-  // Email verified or Google login — proceed normally
+  // Immer weiter — kein Block mehr
   proceedAfterVerification();
 }
 
@@ -3590,6 +3567,10 @@ function proceedAfterVerification() {
         // User has saved profile — go straight to home
         updateUIWithUserData();
         showScreen('home');
+        // Zeige Email-Verifizierungs-Banner (non-blocking)
+        if (window._showEmailBanner) {
+          setTimeout(() => showVerificationBanner(), 500);
+        }
         // Process shared destination from Google Maps if any
         if (window._sharedDestination) {
           setTimeout(() => processSharedDestination(), 800);
@@ -3626,12 +3607,20 @@ async function checkEmailVerified() {
 
 // Resend verification email with feedback
 async function resendAndNotify() {
+  const btn = document.querySelector('#verify-email-screen button:first-of-type');
+  const origText = btn ? btn.textContent : '';
   try {
+    if (btn) { btn.textContent = 'Wird gesendet...'; btn.disabled = true; }
     if (auth && auth.currentUser) {
       await auth.currentUser.sendEmailVerification();
-      alert('Neue Bestätigungs-Mail gesendet! Prüfe deinen Posteingang (auch Spam-Ordner).');
+      if (btn) btn.textContent = 'Gesendet! Prüfe deinen Posteingang';
+      setTimeout(() => { if (btn) { btn.textContent = origText; btn.disabled = false; } }, 4000);
+    } else {
+      alert('Kein Benutzer angemeldet. Bitte lade die Seite neu.');
+      if (btn) { btn.textContent = origText; btn.disabled = false; }
     }
   } catch (e) {
+    if (btn) { btn.textContent = origText; btn.disabled = false; }
     if (e.code === 'auth/too-many-requests') {
       alert('Zu viele Anfragen. Bitte warte einige Minuten und versuche es dann erneut.');
     } else {
@@ -3874,7 +3863,7 @@ function showScreen(id) {
   currentScreen = id;
 
   // Hide bottom nav during login, splash, onboarding
-  const hideNavScreens = ['login', 'splash', 'onboarding'];
+  const hideNavScreens = ['login', 'splash', 'onboarding', 'verify-email-screen'];
   const nav = document.querySelector('.bottom-nav');
   if (nav) nav.style.display = hideNavScreens.includes(id) ? 'none' : 'flex';
 
