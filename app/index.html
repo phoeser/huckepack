@@ -1150,6 +1150,12 @@
         <input type="password" class="login-input" placeholder="Passwort (mind. 7 Zeichen, Buchstabe + Zahl)" id="register-password">
         <button type="button" class="pw-toggle" onclick="togglePwVisibility('register-password', this)">👁</button>
       </div>
+      <div style="margin:10px 0;display:flex;align-items:flex-start;gap:8px;">
+        <input type="checkbox" id="agb-checkbox" style="margin-top:3px;width:18px;height:18px;accent-color:#1a5653;flex-shrink:0;">
+        <label for="agb-checkbox" style="font-size:12px;color:#666;line-height:1.4;">
+          Ich akzeptiere die <a href="#" onclick="event.preventDefault();openLegalModal('agb')" style="color:#1a5653;font-weight:600;">AGB</a> und habe die <a href="#" onclick="event.preventDefault();openLegalModal('datenschutz')" style="color:#1a5653;font-weight:600;">Datenschutzerklärung</a> gelesen.
+        </label>
+      </div>
       <div id="register-error" style="color:#ff6b6b;font-size:13px;text-align:center;margin:8px 0;padding:8px;background:rgba(255,0,0,0.1);border-radius:8px;display:none;"></div>
       <button class="login-submit" onclick="proceedFromLogin('register')">Registrieren</button>
     </div>
@@ -1634,33 +1640,27 @@
         </span>
         <span class="profile-section-item-arrow">›</span>
       </div>
-      <a href="datenschutz.html" target="_blank" style="text-decoration:none;color:inherit;">
-        <div class="profile-section-item" style="cursor:pointer;">
-          <span class="profile-section-item-icon">🔒</span>
-          <span class="profile-section-item-text">
-            <div class="profile-section-item-label">Datenschutzerklärung</div>
-          </span>
-          <span class="profile-section-item-arrow">›</span>
-        </div>
-      </a>
-      <a href="agb.html" target="_blank" style="text-decoration:none;color:inherit;">
-        <div class="profile-section-item" style="cursor:pointer;">
-          <span class="profile-section-item-icon">📋</span>
-          <span class="profile-section-item-text">
-            <div class="profile-section-item-label">AGB / Nutzungsbedingungen</div>
-          </span>
-          <span class="profile-section-item-arrow">›</span>
-        </div>
-      </a>
-      <a href="impressum.html" target="_blank" style="text-decoration:none;color:inherit;">
-        <div class="profile-section-item" style="cursor:pointer;">
-          <span class="profile-section-item-icon">📄</span>
-          <span class="profile-section-item-text">
-            <div class="profile-section-item-label">Impressum</div>
-          </span>
-          <span class="profile-section-item-arrow">›</span>
-        </div>
-      </a>
+      <div class="profile-section-item" onclick="openLegalModal('datenschutz')" style="cursor:pointer;">
+        <span class="profile-section-item-icon">🔒</span>
+        <span class="profile-section-item-text">
+          <div class="profile-section-item-label">Datenschutzerklärung</div>
+        </span>
+        <span class="profile-section-item-arrow">›</span>
+      </div>
+      <div class="profile-section-item" onclick="openLegalModal('agb')" style="cursor:pointer;">
+        <span class="profile-section-item-icon">📋</span>
+        <span class="profile-section-item-text">
+          <div class="profile-section-item-label">AGB / Nutzungsbedingungen</div>
+        </span>
+        <span class="profile-section-item-arrow">›</span>
+      </div>
+      <div class="profile-section-item" onclick="openLegalModal('impressum')" style="cursor:pointer;">
+        <span class="profile-section-item-icon">📄</span>
+        <span class="profile-section-item-text">
+          <div class="profile-section-item-label">Impressum</div>
+        </span>
+        <span class="profile-section-item-arrow">›</span>
+      </div>
     </div>
     <!-- Empfehlen -->
     <div class="profile-section" style="margin-top: 8px;">
@@ -2174,21 +2174,15 @@
   </div>
 </div>
 
-<!-- ===== DATENSCHUTZ OVERLAY ===== -->
-<div class="profile-edit-modal" id="privacy-screen-modal">
-  <div class="profile-edit-card" style="max-width: 400px; max-height: 80vh; overflow-y: auto;">
-    <h3 style="color:#166534;">Datenschutz</h3>
-    <div style="font-size:13px;color:#333;line-height:1.7;">
-      <p style="margin-bottom:12px;"><strong>1. Verantwortlicher</strong><br>Huckepack, München. Kontakt: datenschutz@huckepack.app</p>
-      <p style="margin-bottom:12px;"><strong>2. Welche Daten wir erheben</strong><br>Name, E-Mail-Adresse, GPS-Standort (nur während aktiver Nutzung), Fahrzeugdaten, Zahlungsinformationen (via Stripe), Bewertungen und Fahrtenhistorie.</p>
-      <p style="margin-bottom:12px;"><strong>3. Zweck der Datenverarbeitung</strong><br>Bereitstellung des Mitfahr-Services, Matching von Fahrern und Mitfahrern, Abrechnung und Bezahlung, Sicherheit und Betrugsprävention, Verbesserung unseres Services.</p>
-      <p style="margin-bottom:12px;"><strong>4. GPS-Standort</strong><br>Dein Standort wird nur erhoben, wenn du die App aktiv nutzt (Fahrt suchen oder anbieten). Er wird nicht im Hintergrund getrackt. Standortdaten aktiver Fahrten werden alle 60 Sekunden aktualisiert und nach Fahrtende gelöscht.</p>
-      <p style="margin-bottom:12px;"><strong>5. Datenspeicherung</strong><br>Deine Daten werden in Firebase (Google Cloud, EU-Server) gespeichert. Zahlungsdaten verarbeitet ausschließlich Stripe — wir speichern keine Kreditkartennummern.</p>
-      <p style="margin-bottom:12px;"><strong>6. Deine Rechte</strong><br>Du hast jederzeit das Recht auf Auskunft, Berichtigung, Löschung und Datenübertragbarkeit deiner personenbezogenen Daten gemäß DSGVO. Kontaktiere uns unter datenschutz@huckepack.app.</p>
-      <p style="margin-bottom:12px;"><strong>7. Datenweitergabe</strong><br>Wir geben deine Daten nur an Fahrer/Mitfahrer weiter, soweit für die Fahrt notwendig (Name, ungefährer Standort). Eine Weitergabe an Dritte erfolgt nicht, außer wenn gesetzlich vorgeschrieben.</p>
-      <p style="margin-bottom:0;"><strong>8. Kontakt</strong><br>Bei Fragen zum Datenschutz: datenschutz@huckepack.app</p>
+<!-- ===== LEGAL MODAL (AGB / Datenschutz / Impressum) ===== -->
+<div class="profile-edit-modal" id="legal-modal">
+  <div class="profile-edit-card" style="max-width: 440px; max-height: 85vh; overflow-y: auto; padding: 24px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h3 id="legal-modal-title" style="color:#1a5653;margin:0;font-size:18px;"></h3>
+      <button onclick="closeLegalModal()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#666;padding:4px;">✕</button>
     </div>
-    <button class="pe-btn-cancel" onclick="closePrivacyScreen()" style="margin-top:16px;">Schließen</button>
+    <div id="legal-modal-content" style="font-size:13px;color:#333;line-height:1.7;"></div>
+    <button class="pe-btn-cancel" onclick="closeLegalModal()" style="margin-top:20px;width:100%;">Schließen</button>
   </div>
 </div>
 
@@ -3517,6 +3511,8 @@ async function proceedFromLogin(method) {
     const email = document.getElementById('register-email').value.trim();
     const password = document.getElementById('register-password').value;
     if (!name || !email || !password) { showLoginError('Bitte alle Felder ausfüllen.', 'register'); return; }
+    const agbCheckbox = document.getElementById('agb-checkbox');
+    if (agbCheckbox && !agbCheckbox.checked) { showLoginError('Bitte akzeptiere die AGB und Datenschutzerklärung.', 'register'); return; }
     if (!email.includes('@') || !email.includes('.')) { showLoginError('Bitte eine gültige E-Mail-Adresse eingeben.', 'register'); return; }
     const pwError = validatePassword(password);
     if (pwError) { showLoginError(pwError, 'register'); return; }
@@ -5781,8 +5777,149 @@ function saveNotificationSettings() {
 // ===== ÜBER HUCKEPACK & DATENSCHUTZ =====
 function openAboutScreen() { document.getElementById('about-screen-modal').classList.add('active'); }
 function closeAboutScreen() { document.getElementById('about-screen-modal').classList.remove('active'); }
-function openPrivacyScreen() { document.getElementById('privacy-screen-modal').classList.add('active'); }
-function closePrivacyScreen() { document.getElementById('privacy-screen-modal').classList.remove('active'); }
+
+// ===== LEGAL MODALS (AGB, Datenschutz, Impressum) =====
+const _legalContent = {
+  agb: {
+    title: 'AGB / Nutzungsbedingungen',
+    html: `
+<p style="margin-bottom:14px;"><strong>§ 1 Geltungsbereich und Vertragsgegenstand</strong></p>
+<p style="margin-bottom:10px;">Diese Allgemeinen Geschäftsbedingungen (AGB) gelten für die Nutzung der Huckepack-Plattform, betrieben von Paul Höser, München (nachfolgend „Betreiber").</p>
+<p style="margin-bottom:10px;">Die Plattform dient ausschließlich der Vermittlung von privaten Mitfahrgelegenheiten auf kurzen Stadtstrecken. Huckepack ist keine Beförderungsdienstleistung im Sinne des Personenbeförderungsgesetzes (PBefG), sondern eine reine Vermittlungsplattform für private Fahrgemeinschaften.</p>
+<p style="margin-bottom:14px;">Durch die Registrierung und Nutzung der Plattform akzeptiert der Nutzer diese AGB.</p>
+
+<p style="margin-bottom:14px;"><strong>§ 2 Fahrgemeinschaft und Kostenerstattung – Keine Gewinnabsicht</strong></p>
+<p style="margin-bottom:10px;">Die über Huckepack vermittelten Fahrten sind ausschließlich private Mitfahrgelegenheiten im Sinne einer Fahrgemeinschaft. Die Fahrer verfolgen mit dem Anbieten einer Fahrt <strong>keine Gewinnabsicht</strong> und können über die Plattform auch <strong>keinen Gewinn erzielen</strong>.</p>
+<p style="margin-bottom:10px;">Die vom Mitfahrer gezahlten Beträge stellen ausschließlich eine anteilige Erstattung der tatsächlich anfallenden Fahrtkosten dar. Zu diesen Fahrtkosten zählen insbesondere: Kraftstoffkosten, Verschleiß und Abnutzung des Fahrzeugs, Versicherungsbeiträge (anteilig) und Parkgebühren (sofern anfallend).</p>
+<p style="margin-bottom:10px;">Der über die Plattform berechnete Preis von <strong>0,20 €/km</strong> liegt deutlich unter den tatsächlichen Vollkosten eines PKW (laut ADAC durchschnittlich 0,30–0,70 €/km). Eine Gewinnerzielung ist daher rechnerisch ausgeschlossen.</p>
+<p style="margin-bottom:10px;">Der Fahrer erhält nach Abzug der Plattformgebühr (2,5%) lediglich einen Zuschuss zu seinen ohnehin anfallenden Fahrtkosten. Es handelt sich ausdrücklich nicht um ein Entgelt für eine Beförderungsleistung.</p>
+<p style="margin-bottom:14px;">Die gewerbliche Personenbeförderung gegen Entgelt bedarf einer Genehmigung nach dem PBefG. Die Nutzung der Plattform zur gewerblichen Personenbeförderung ist untersagt.</p>
+
+<p style="margin-bottom:14px;"><strong>§ 3 Rechtliche Einordnung der Fahrgemeinschaft</strong></p>
+<p style="margin-bottom:10px;">Die über Huckepack vermittelten Fahrten sind nach deutschem Recht als private Gefälligkeitsfahrten bzw. Fahrgemeinschaften einzuordnen:</p>
+<p style="margin-bottom:6px;">a) Der Fahrer führt die Fahrt ohnehin durch – die Mitnahme erfolgt auf dem bereits geplanten Weg.</p>
+<p style="margin-bottom:6px;">b) Der Fahrer erzielt keinen Gewinn, sondern erhält lediglich einen Kostenzuschuss.</p>
+<p style="margin-bottom:6px;">c) Die Fahrt wird nicht regelmäßig als wirtschaftliche Dienstleistung angeboten.</p>
+<p style="margin-bottom:14px;">d) Es besteht kein Beförderungsvertrag im Sinne des PBefG.</p>
+
+<p style="margin-bottom:14px;"><strong>§ 4 Registrierung und Nutzerkonto</strong></p>
+<p style="margin-bottom:10px;">Für die Nutzung ist eine Registrierung erforderlich. Der Nutzer muss wahrheitsgemäße Angaben machen und mindestens 18 Jahre alt sein. Jeder Nutzer darf nur ein Konto anlegen.</p>
+
+<p style="margin-bottom:14px;"><strong>§ 5 Pflichten der Fahrer</strong></p>
+<p style="margin-bottom:6px;">a) Besitz eines gültigen Führerscheins der erforderlichen Klasse.</p>
+<p style="margin-bottom:6px;">b) Nutzung eines zugelassenen und versicherten Fahrzeugs (mind. Kfz-Haftpflicht).</p>
+<p style="margin-bottom:6px;">c) Einhaltung der StVO und aller Verkehrsvorschriften.</p>
+<p style="margin-bottom:6px;">d) Die Fahrt nur anbieten, wenn diese ohnehin durchgeführt wird.</p>
+<p style="margin-bottom:6px;">e) Keine gewerbliche Personenbeförderung über die Plattform.</p>
+<p style="margin-bottom:14px;">f) Fahrtüchtigkeit (kein Alkohol, keine Drogen).</p>
+
+<p style="margin-bottom:14px;"><strong>§ 6 Pflichten der Mitfahrer</strong></p>
+<p style="margin-bottom:6px;">a) Pünktliches Erscheinen am vereinbarten Treffpunkt.</p>
+<p style="margin-bottom:6px;">b) Angemessenes Verhalten während der Fahrt.</p>
+<p style="margin-bottom:6px;">c) Zahlung des vereinbarten Kostenbeitrags über die Plattform.</p>
+<p style="margin-bottom:14px;">d) Anlegen des Sicherheitsgurts während der gesamten Fahrt.</p>
+
+<p style="margin-bottom:14px;"><strong>§ 7 Plattformgebühr und Zahlung</strong></p>
+<p style="margin-bottom:10px;">Der Betreiber erhebt eine Plattformgebühr von 2,5% des Fahrpreises, aufgeteilt zwischen Fahrer (1,25%) und Mitfahrer (1,25%). Die Zahlung erfolgt bargeldlos über Stripe. Der Fahrpreis beträgt 0,20 €/km.</p>
+
+<p style="margin-bottom:14px;"><strong>§ 8 Haftung</strong></p>
+<p style="margin-bottom:10px;">Der Betreiber vermittelt lediglich den Kontakt zwischen Fahrer und Mitfahrer. Ein Beförderungsvertrag kommt ausschließlich zwischen Fahrer und Mitfahrer zustande. Der Betreiber haftet nicht für Schäden aus der Durchführung oder Nichtdurchführung einer Fahrt. Die Haftung beschränkt sich auf Vorsatz und grobe Fahrlässigkeit.</p>
+
+<p style="margin-bottom:14px;"><strong>§ 9 Versicherungsschutz</strong></p>
+<p style="margin-bottom:10px;">Die Kfz-Haftpflichtversicherung des Fahrers deckt grundsätzlich auch mitgenommene Fahrgäste ab. Die Mitnahme im Rahmen einer privaten Fahrgemeinschaft ohne Gewinnabsicht ist durch die bestehende Kfz-Haftpflichtversicherung gedeckt.</p>
+
+<p style="margin-bottom:14px;"><strong>§ 10 Stornierung</strong></p>
+<p style="margin-bottom:10px;">Beide Parteien können jederzeit stornieren. Fahrtangebote verfallen nach 60 Minuten, Suchanfragen nach 90 Minuten.</p>
+
+<p style="margin-bottom:14px;"><strong>§ 11 Schlussbestimmungen</strong></p>
+<p style="margin-bottom:10px;">Es gilt deutsches Recht. Gerichtsstand ist München. Sollten einzelne Bestimmungen unwirksam sein, berührt dies die übrigen Bestimmungen nicht.</p>
+<p style="margin-top:16px;font-size:11px;color:#888;">Stand: April 2026</p>
+`
+  },
+  datenschutz: {
+    title: 'Datenschutzerklärung',
+    html: `
+<p style="margin-bottom:14px;"><strong>§ 1 Verantwortlicher</strong></p>
+<p style="margin-bottom:14px;">Paul Höser, München, Deutschland<br>E-Mail: phoeser@web.de</p>
+
+<p style="margin-bottom:14px;"><strong>§ 2 Erhobene Daten</strong></p>
+<p style="margin-bottom:6px;">a) Registrierungsdaten: E-Mail-Adresse, Name, Passwort (verschlüsselt)</p>
+<p style="margin-bottom:6px;">b) Profildaten: Fahrzeugdaten (Marke, Modell, Farbe, Kennzeichen)</p>
+<p style="margin-bottom:6px;">c) Standortdaten: GPS-Position bei aktiver Nutzung</p>
+<p style="margin-bottom:6px;">d) Fahrtdaten: Strecke, Entfernung, Preis, Zeitstempel, Matching</p>
+<p style="margin-bottom:6px;">e) Zahlungsdaten: Direkt bei Stripe verarbeitet (siehe § 6)</p>
+<p style="margin-bottom:6px;">f) Kommunikationsdaten: In-App-Chat zwischen Fahrer und Mitfahrer</p>
+<p style="margin-bottom:6px;">g) Bewertungen nach abgeschlossenen Fahrten</p>
+<p style="margin-bottom:14px;">h) Technische Daten: Browser-Typ, Gerätetyp, IP-Adresse</p>
+
+<p style="margin-bottom:14px;"><strong>§ 3 Zweck der Datenverarbeitung</strong></p>
+<p style="margin-bottom:10px;">Bereitstellung der Plattform (Art. 6 Abs. 1 lit. b DSGVO), Vermittlung von Mitfahrgelegenheiten, Zahlungsabwicklung, Sicherheit und Betrugsprävention, Verbesserung der Plattform, Kommunikation mit Nutzern.</p>
+
+<p style="margin-bottom:14px;"><strong>§ 4 Standortdaten</strong></p>
+<p style="margin-bottom:10px;">Standortdaten werden nur bei aktiver Fahrt erhoben, ausschließlich für das Matching verwendet und nicht an Dritte weitergegeben. Die Standortfreigabe kann in den Geräteeinstellungen deaktiviert werden.</p>
+
+<p style="margin-bottom:14px;"><strong>§ 5 Hosting und Dienste</strong></p>
+<p style="margin-bottom:6px;">a) Firebase (Google Ireland): Auth, Firestore, Cloud Functions. Server: Europe-West1.</p>
+<p style="margin-bottom:6px;">b) GitHub Pages: Hosting der Web-App.</p>
+<p style="margin-bottom:6px;">c) Nominatim/OpenStreetMap: Geocoding (nur Adressdaten).</p>
+<p style="margin-bottom:14px;">d) OSRM: Routenberechnung (nur Koordinaten).</p>
+
+<p style="margin-bottom:14px;"><strong>§ 6 Zahlungsdienstleister (Stripe)</strong></p>
+<p style="margin-bottom:10px;">Zahlungen werden über Stripe (Stripe Payments Europe Ltd., Irland) abgewickelt. Zahlungsinformationen werden direkt an Stripe übermittelt. Datenschutzrichtlinie: stripe.com/privacy</p>
+
+<p style="margin-bottom:14px;"><strong>§ 7 Speicherdauer</strong></p>
+<p style="margin-bottom:10px;">Kontodaten bis zur Löschung, Fahrtdaten 12 Monate, Zahlungsdaten gemäß gesetzlicher Fristen (bis 10 Jahre), Standortdaten nach Fahrtende anonymisiert, technische Logs max. 30 Tage.</p>
+
+<p style="margin-bottom:14px;"><strong>§ 8 Deine Rechte (DSGVO)</strong></p>
+<p style="margin-bottom:10px;">Auskunft (Art. 15), Berichtigung (Art. 16), Löschung (Art. 17), Einschränkung (Art. 18), Datenübertragbarkeit (Art. 20), Widerspruch (Art. 21).</p>
+<p style="margin-bottom:10px;">Kontakt: phoeser@web.de</p>
+<p style="margin-bottom:14px;">Aufsichtsbehörde: Bayerisches Landesamt für Datenschutzaufsicht (BayLDA).</p>
+
+<p style="margin-bottom:14px;"><strong>§ 9 Cookies</strong></p>
+<p style="margin-bottom:10px;">Keine Tracking-Cookies. Nur technisch notwendige lokale Speicherung (Auth-Token, Einstellungen) gem. § 25 Abs. 2 TDDDG.</p>
+
+<p style="margin-bottom:14px;"><strong>§ 10 Datensicherheit</strong></p>
+<p style="margin-bottom:10px;">HTTPS/TLS-Verschlüsselung, Firebase Security Rules, Passwort-Hashing, Session-Timeout nach 60 Min.</p>
+<p style="margin-top:16px;font-size:11px;color:#888;">Stand: April 2026</p>
+`
+  },
+  impressum: {
+    title: 'Impressum',
+    html: `
+<p style="margin-bottom:14px;"><strong>Angaben gemäß § 5 TMG</strong></p>
+<p style="margin-bottom:14px;">Paul Höser<br>München, Deutschland<br><br>E-Mail: phoeser@web.de</p>
+
+<p style="margin-bottom:14px;"><strong>Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV</strong></p>
+<p style="margin-bottom:14px;">Paul Höser<br>München, Deutschland</p>
+
+<p style="margin-bottom:14px;"><strong>Haftungsausschluss</strong></p>
+<p style="margin-bottom:10px;"><em>Haftung für Inhalte:</em> Die Inhalte unserer Seiten wurden mit größter Sorgfalt erstellt. Für die Richtigkeit, Vollständigkeit und Aktualität der Inhalte können wir jedoch keine Gewähr übernehmen.</p>
+<p style="margin-bottom:10px;"><em>Haftung für Links:</em> Unser Angebot enthält Links zu externen Webseiten Dritter, auf deren Inhalte wir keinen Einfluss haben.</p>
+<p style="margin-bottom:14px;">Die Plattform Huckepack ist eine reine Vermittlungsplattform für private Fahrgemeinschaften. Es werden keine gewerblichen Beförderungsleistungen angeboten.</p>
+
+<p style="margin-bottom:14px;"><strong>Streitbeilegung</strong></p>
+<p style="margin-bottom:10px;">Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung (OS) bereit: ec.europa.eu/consumers/odr/</p>
+<p style="margin-bottom:10px;">Wir sind nicht bereit oder verpflichtet, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen.</p>
+<p style="margin-top:16px;font-size:11px;color:#888;">Stand: April 2026</p>
+`
+  }
+};
+
+function openLegalModal(type) {
+  const modal = document.getElementById('legal-modal');
+  const data = _legalContent[type];
+  if (!data || !modal) return;
+  document.getElementById('legal-modal-title').textContent = data.title;
+  document.getElementById('legal-modal-content').innerHTML = data.html;
+  modal.classList.add('active');
+}
+function closeLegalModal() {
+  const modal = document.getElementById('legal-modal');
+  if (modal) modal.classList.remove('active');
+}
+// Legacy compat
+function openPrivacyScreen() { openLegalModal('datenschutz'); }
+function closePrivacyScreen() { closeLegalModal(); }
 
 // ===== HUCKEPACK WEITEREMPFEHLEN =====
 async function shareHuckepack() {
